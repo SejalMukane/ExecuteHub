@@ -31,7 +31,7 @@ class PlaywrightOutputParser
     {
       passed: stats(data, "expected"),
       failed: stats(data, "unexpected"),
-      duration_ms: stats(data, "duration").to_f.round,
+      duration_ms: duration_ms(data),
       tests: extract_tests(data),
       screenshots: scan_files("png"),
       videos: scan_files("webm"),
@@ -43,6 +43,10 @@ class PlaywrightOutputParser
 
   def stats(data, key)
     data.dig("stats", key).to_i
+  end
+
+  def duration_ms(data)
+    data.dig("stats", "duration").to_f.round
   end
 
   # Flattens suites -> specs -> tests into a list of individual test outcomes.

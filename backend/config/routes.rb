@@ -23,6 +23,19 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :jobs, only: [:show] do
+        member do
+          get "logs"
+          get "artifacts"
+        end
+      end
+
+      resources :artifacts, only: [] do
+        member do
+          get "file"
+        end
+      end
+
       get "queue", to: "queue#show"
 
       get    "github/oauth/start",    to: "github_auth#start"
