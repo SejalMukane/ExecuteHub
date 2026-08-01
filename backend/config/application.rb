@@ -23,6 +23,13 @@ module Backend
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    # ExecuteHub orchestration settings (chunk_size, worker delays...).
+    config.executehub = config_for(:executehub)
+
+    # Route ActiveJob jobs through Sidekiq. TestExecutionWorker is a native
+    # Sidekiq worker that pushes directly to the "test_execution" queue.
+    config.active_job.queue_adapter = :sidekiq
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.

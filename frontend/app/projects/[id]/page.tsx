@@ -23,6 +23,9 @@ import {
   Search,
   Webhook,
   Activity,
+  Play,
+  Rocket,
+  Timer,
 } from "lucide-react";
 import GithubIcon from "@/components/GithubIcon";
 import {
@@ -69,6 +72,12 @@ export default function ProjectDetailPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const [showRunModal, setShowRunModal] = useState(false);
+  const [runBranch, setRunBranch] = useState("");
+  const [runCommitSha, setRunCommitSha] = useState("");
+  const [runTotalTests, setRunTotalTests] = useState("100");
+  const [startingRun, setStartingRun] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -220,6 +229,27 @@ export default function ProjectDetailPage() {
     router.replace("/");
   };
 
+  const handleRunTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !project) return;
+    setStartingRun(true);
+    setError(null);
+    try {
+      const res = await api.createTestRun(token, project.id, {
+        branch: runBranch || "main",
+        commit_sha: runCommitSha,
+        total_tests: parseInt(runTotalTests, 10),
+      });
+      setShowRunModal(false);
+      setNotice(`Test run #${res.test_run.id} scheduled — ${res.test_run.total_jobs} job(s) queued.`);
+      router.push(`/test-runs/${res.test_run.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start test run.");
+    } finally {
+      setStartingRun(false);
+    }
+  };
+
   if (loading || !ready) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -233,6 +263,8 @@ export default function ProjectDetailPage() {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, active: false },
     { label: "Projects", href: "/projects", icon: FolderKanban, active: true },
+    { label: "Test Runs", href: "/test-runs", icon: Rocket, active: false },
+    { label: "Queue", href: "/queue", icon: Timer, active: false },
     { label: "Browser Sessions", href: "/dashboard#sessions", icon: Server, active: false },
     { label: "Profile", href: "/profile", icon: User, active: false },
   ];
@@ -312,12 +344,23 @@ export default function ProjectDetailPage() {
                   <h1 className="text-2xl font-bold tracking-tight">{project?.name ?? "Project"}</h1>
                   <p className="text-sm text-neutral-400 mt-1">Settings and GitHub repository connection.</p>
                 </div>
-                {github?.connected && (
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm">
-                    <GithubIcon className="w-4 h-4" />
-                    <span className="font-medium">@{github.login}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  {canWrite && (
+                    <button
+                      onClick={() => setShowRunModal(true)}
+                      className="px-4 py-2.5 bg-white text-black text-sm font-medium rounded-md hover:bg-neutral-200 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+                    >
+                      <Play className="w-4 h-4" />
+                      Run Test
+                    </button>
+                  )}
+                  {github?.connected && (
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm">
+                      <GithubIcon className="w-4 h-4" />
+                      <span className="font-medium">@{github.login}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -674,6 +717,103 @@ export default function ProjectDetailPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Run Test modal */}
+      {showRunModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRunModal(false)} />
+          <div className="relative w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Play className="w-4 h-4 text-neutral-400" />
+                Run Test
+              </h3>
+              <button onClick={() => setShowRunModal(false)} className="text-neutral-500 hover:text-white transition-colors" aria-label="Close">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-500 mb-4">
+              This schedules a new test run for <span className="text-neutral-300 font-medium">{project?.name}</span>. Tests
+              are split into chunks and queued for background execution.
+            </p>
+
+            <form onSubmit={handleRunTest} className="space-y-4">
+              <div>
+                <label htmlFor="run-branch" className="text-sm font-medium text-neutral-300 mb-1.5 block">
+                  Branch
+                </label>
+                <input
+                  id="run-branch"
+                  type="text"
+                  value={runBranch}
+                  onChange={(e) => setRunBranch(e.target.value)}
+                  placeholder="main"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="run-commit" className="text-sm font-medium text-neutral-300 mb-1.5 block">
+                  Commit SHA
+                </label>
+                <input
+                  id="run-commit"
+                  type="text"
+                  required
+                  value={runCommitSha}
+                  onChange={(e) => setRunCommitSha(e.target.value)}
+                  placeholder="e.g. a1b2c3d4e5f6..."
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors font-mono"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="run-tests" className="text-sm font-medium text-neutral-300 mb-1.5 block">
+                  Total Tests
+                </label>
+                <input
+                  id="run-tests"
+                  type="number"
+                  required
+                  min={1}
+                  value={runTotalTests}
+                  onChange={(e) => setRunTotalTests(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                />
+                <p className="text-xs text-neutral-500 mt-1.5">
+                  Tests are split into chunks of 20 per job.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRunModal(false)}
+                  className="px-4 py-2.5 text-sm text-neutral-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={startingRun}
+                  className="px-5 py-2.5 bg-white text-black text-sm font-medium rounded-md hover:bg-neutral-200 transition-colors flex items-center gap-2 shadow-lg shadow-white/10 disabled:opacity-50"
+                >
+                  {startingRun ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Scheduling...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" /> Start Run
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

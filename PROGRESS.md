@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 1 August 2026
+**Last updated:** 1 August 2026 (Week 3 complete)
 
 ---
 
@@ -290,6 +290,80 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 
 ---
 
+## Week 3 — Test Scheduling & Queueing
+
+**Status:** ✅ Complete
+
+**Goal:** Build the orchestration layer that schedules and queues test-execution jobs.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| TestRun model | `test_runs` table (project_id FK, branch, commit_sha, status, total_tests, total_jobs, completed_jobs, failed_jobs, queued_jobs, progress_percentage, started_at, finished_at); statuses `queued/scheduling/running/completed/failed/cancelled`; validates project + branch + total_tests > 0; `recent` scope (newest first) | ✅ Done |
+| Job model | `jobs` table (test_run_id FK, chunk_number unique per run, status, worker_id, error_message, started_at, finished_at); statuses `queued/running/completed/failed/retrying`; `mark_running!/mark_completed!/mark_failed!/mark_retrying!` helpers; worker identity `sidekiq:<pid>` | ✅ Done |
+| Chunking / fan-out scheduler | `TestScheduler` — splits `total_tests` into chunks of `chunk_size` (configurable, default 20), creates a Job per chunk, enqueues `TestExecutionWorker.perform_async(job.id)`, logs every step, updates run counters + status | ✅ Done |
+| Redis + Sidekiq queue | `test_execution` queue (priority 3), `default` (priority 1); concurrency 5; `config/executehub.yml` (chunk_size, worker_simulate_delay), `sidekiq.rb` initializer (REDIS_URL default `redis://localhost:6379/0`), `config/sidekiq.yml` | ✅ Done |
+| Test execution worker | `TestExecutionWorker` (queue `test_execution`, retry 3) — marks job running, simulates work (`worker_simulate_delay`), marks job completed/failed, updates run progress via `TestRunProgressUpdater` | ✅ Done |
+| Progress tracking | `TestRunProgressUpdater` — recomputes job counters from the DB, `progress = completed/total*100`, transitions run to running/completed/failed | ✅ Done |
+| Queue dashboard service | `QueueDashboard` — queued/running from Sidekiq API, completed/failed from the `jobs` table | ✅ Done |
+
+### Backend APIs (new)
+
+| Endpoint | Method | Description | Status |
+|----------|--------|-------------|--------|
+| `/api/v1/projects/:project_id/test_runs` | POST | Create test run → chunks into jobs → enqueue (admin/developer only) | ✅ Done |
+| `/api/v1/test_runs/:id` | GET | Run details + jobs + progress (auth) | ✅ Done |
+| `/api/v1/test_runs` | GET | List runs newest first (visible projects) | ✅ Done |
+| `/api/v1/queue` | GET | Queue stats: queued/running/completed/failed jobs | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Test Runs page | `/test-runs` — table (run #, project, branch/commit, status badge, jobs, progress bar), 5s auto-refresh | ✅ Done |
+| Test Run detail page | `/test-runs/[id]` — run info, stats cards, job list with status badges | ✅ Done |
+| Queue dashboard page | `/queue` — 4 stat cards (queued/running/completed/failed) + throughput, 5s auto-refresh | ✅ Done |
+| Run Test UI | Project detail `/projects/[id]` — Run Test button + modal (branch, commit SHA, total tests) → redirects to run detail | ✅ Done |
+| Status badges | `StatusBadge` component — Queued/Retrying=blue, Running/Scheduling=yellow, Completed=green, Failed=red + `ProgressBar` | ✅ Done |
+| Shared shell + nav | `DashboardShell` — sidebar nav now includes Test Runs + Queue on all pages | ✅ Done |
+
+### Deliverable
+
+✅ Test runs are created via the API, split into jobs, queued on Redis/Sidekiq, processed by the worker, and progress is tracked to 100%. Verified live end-to-end (create run → 5 jobs → worker processes → `status=completed`, `progress=100.0%`, queue drained).
+
+### Database (new tables)
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| `test_runs` | project_id (FK), branch, commit_sha, status, total_tests, total_jobs, completed_jobs, failed_jobs, queued_jobs, progress_percentage, started_at, finished_at | statuses queued/scheduling/running/completed/failed/cancelled |
+| `jobs` | test_run_id (FK), chunk_number (unique per run), status, worker_id, error_message, started_at, finished_at | statuses queued/running/completed/failed/retrying |
+
+### Testing
+
+- **RSpec (59 examples, 0 failures)** — TestRun model, Job model, TestScheduler service, TestRunProgressUpdater service, TestExecutionWorker, TestRuns API, Queue API (queue spec stubs Sidekiq primitives).
+- **Smoke test** `backend/script/smoke_orchestration.rb` — end-to-end scheduler/worker flow against real Redis (passes).
+- **Frontend** — `npx tsc --noEmit` clean; `npm run build` passes.
+
+### Key Files — Backend
+
+- `backend/app/models/test_run.rb`, `job.rb` (+ `project.rb` `has_many :test_runs`)
+- `backend/app/services/test_scheduler.rb`, `test_run_progress_updater.rb`, `queue_dashboard.rb`
+- `backend/app/workers/test_execution_worker.rb`
+- `backend/app/controllers/api/v1/test_runs_controller.rb`, `queue_controller.rb`
+- `backend/config/executehub.yml`, `backend/config/sidekiq.yml`, `backend/config/initializers/sidekiq.rb`
+- `backend/db/migrate/20260801190004_create_test_runs.rb`, `20260801190005_create_jobs.rb`
+- `backend/script/smoke_orchestration.rb`
+
+### Key Files — Frontend
+
+- `frontend/lib/api.ts` — TestRun/Job/QueueStats types + `createTestRun/listTestRuns/getTestRun/getQueueStats`
+- `frontend/components/DashboardShell.tsx`, `StatusBadge.tsx`
+- `frontend/app/test-runs/page.tsx`, `frontend/app/test-runs/[id]/page.tsx`, `frontend/app/queue/page.tsx`
+- `frontend/app/projects/[id]/page.tsx` — Run Test modal
+
+---
+
 ## Infrastructure Decisions
 
 | Item | Choice | Notes |
@@ -352,8 +426,8 @@ Open `http://localhost:3000` → register → dashboard.
 
 - [x] Week 1 — Foundation & Authentication ✅ (Rails, PostgreSQL, JWT auth, User + Team + Project models, REST APIs, RBAC, auth pages, dashboard + sidebar, projects page, profile page)
 - [x] Week 2 — GitHub Integration & Project Management ✅ (GitHub OAuth, repo connection flow, webhook registration + signature verification, repo metadata storage, Connect GitHub button, repo selection UI, project settings page, repository info page)
+- [x] Week 3 — Test Scheduling & Queueing ✅ (TestRun + Job models, chunking scheduler, Redis/Sidekiq `test_execution` queue, log-only worker, progress tracking, Test Runs + Queue API, Run Test UI, Test Runs + Queue pages, RSpec coverage)
 - [ ] Docker container orchestration for Chrome browsers
-- [ ] Redis queue (Sidekiq) for session creation/cleanup
 - [ ] ActionCable real-time session status
 - [ ] Session history, idle cleanup, reports
 - [ ] Docker Compose local stack

@@ -4,5 +4,7 @@ class Project < ApplicationRecord
 
   has_one :github_repository, dependent: :destroy
 
+  has_many :test_runs, dependent: :destroy
+
   validates :name, presence: true
 end

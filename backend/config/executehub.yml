@@ -1,0 +1,18 @@
+# ExecuteHub orchestration settings.
+# Loaded via Rails.application.config_for(:executehub) in config/application.rb.
+# The `defaults` key provides values shared by every environment.
+defaults: &defaults
+  # Number of tests bundled into a single Job chunk when a TestRun is scheduled.
+  chunk_size: 20
+  # Simulated processing time (seconds) used by TestExecutionWorker before
+  # marking a job as complete. No real browser execution happens yet.
+  worker_simulate_delay: 1
+
+development:
+  <<: *defaults
+
+test:
+  <<: *defaults
+
+production:
+  <<: *defaults

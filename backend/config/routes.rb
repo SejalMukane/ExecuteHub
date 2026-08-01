@@ -13,7 +13,13 @@ Rails.application.routes.draw do
       delete "session/:id",   to: "sessions#destroy"
       get    "browser-images", to: "sessions#images"
 
-      resources :projects, only: [:index, :show, :create, :update, :destroy]
+      resources :projects, only: [:index, :show, :create, :update, :destroy] do
+        resources :test_runs, only: [:create]
+      end
+
+      resources :test_runs, only: [:index, :show]
+
+      get "queue", to: "queue#show"
 
       get    "github/oauth/start",    to: "github_auth#start"
       get    "github/oauth/callback", to: "github_auth#callback"

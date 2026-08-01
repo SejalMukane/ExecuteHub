@@ -15,6 +15,10 @@ gem "bcrypt", "~> 3.1.7"
 # JWT for token-based authentication
 gem "jwt"
 
+# Redis + Sidekiq for background job processing (test_execution queue)
+gem "redis", "~> 5.0"
+gem "sidekiq", "~> 7.3"
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
@@ -36,7 +40,7 @@ gem "thruster", require: false
 gem "rack-cors"
 
 group :development, :test do
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  # See https://guides.rubyonrails.org/debugging_ruby_on_rails.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
@@ -47,4 +51,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # Testing
+  gem "rspec-rails", "~> 7.1"
+  gem "factory_bot_rails", "~> 6.4"
+  gem "shoulda-matchers", "~> 6.4"
 end

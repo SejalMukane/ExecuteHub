@@ -142,6 +142,52 @@ export interface GithubRepositoryResponse {
   deliveries: GithubDelivery[];
 }
 
+export type TestRunStatus =
+  | "queued"
+  | "scheduling"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface Job {
+  id: number;
+  test_run_id: number;
+  worker_id: string | null;
+  chunk_number: number;
+  test_count: number;
+  status: "queued" | "running" | "completed" | "failed" | "retrying";
+  started_at: string | null;
+  finished_at: string | null;
+  retry_count: number;
+}
+
+export interface TestRun {
+  id: number;
+  project_id: number;
+  project_name: string;
+  branch: string;
+  commit_sha: string;
+  status: TestRunStatus;
+  total_tests: number;
+  total_jobs: number;
+  completed_jobs: number;
+  failed_jobs: number;
+  queued_jobs: number;
+  progress_percentage: number;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  jobs?: Job[];
+}
+
+export interface QueueStats {
+  queued_jobs: number;
+  running_jobs: number;
+  completed_jobs: number;
+  failed_jobs: number;
+}
+
 export const api = {
   register: (name: string, email: string, password: string, passwordConfirmation: string) =>
     request<AuthResponse>("/register", {
@@ -257,4 +303,28 @@ export const api = {
       `/github/projects/${projectId}/repository`,
       { token }
     ),
+
+  createTestRun: (
+    token: string,
+    projectId: number,
+    data: { branch: string; commit_sha: string; total_tests: number }
+  ) =>
+    request<{ test_run: TestRun }>(`/projects/${projectId}/test_runs`, {
+      method: "POST",
+      token,
+      body: {
+        branch: data.branch,
+        commit_sha: data.commit_sha,
+        total_tests: data.total_tests,
+      },
+    }),
+
+  listTestRuns: (token: string) =>
+    request<{ test_runs: TestRun[] }>("/test_runs", { token }),
+
+  getTestRun: (token: string, id: number) =>
+    request<{ test_run: TestRun }>(`/test_runs/${id}`, { token }),
+
+  getQueueStats: (token: string) =>
+    request<{ queue: QueueStats }>("/queue", { token }),
 };

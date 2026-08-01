@@ -16,6 +16,8 @@ import {
   GitBranch,
   CheckCircle2,
   AlertTriangle,
+  Rocket,
+  Timer,
 } from "lucide-react";
 import GithubIcon from "@/components/GithubIcon";
 import { api, Project, GithubStatus } from "@/lib/api";
@@ -156,6 +158,8 @@ function ProjectsPageContent() {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, active: false },
     { label: "Projects", href: "/projects", icon: FolderKanban, active: true },
+    { label: "Test Runs", href: "/test-runs", icon: Rocket, active: false },
+    { label: "Queue", href: "/queue", icon: Timer, active: false },
     { label: "Browser Sessions", href: "/dashboard#sessions", icon: Server, active: false },
     { label: "Profile", href: "/profile", icon: User, active: false },
   ];
