@@ -7,6 +7,19 @@ defaults: &defaults
   # Simulated processing time (seconds) used by TestExecutionWorker before
   # marking a job as complete. No real browser execution happens yet.
   worker_simulate_delay: 1
+  # Worker execution settings: the Docker image + container layout used by
+  # WorkerExecutor to run Playwright tests for each Job.
+  worker:
+    # Image built from /Dockerfile.playwright (docker build -f Dockerfile.playwright -t executehub-playwright:latest .)
+    image: executehub-playwright:latest
+    # Command executed when the container starts (working dir = container_workdir).
+    command: ["npx", "playwright", "test"]
+    # Working directory inside the container (where package.json/tests live).
+    container_workdir: /app
+    # Container path where Playwright writes its output (config outputDir).
+    container_artifacts_path: /app/artifacts
+    # Name of the JSON report written by the Playwright "json" reporter.
+    results_file: test-results.json
 
 development:
   <<: *defaults
