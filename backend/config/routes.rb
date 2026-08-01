@@ -17,7 +17,11 @@ Rails.application.routes.draw do
         resources :test_runs, only: [:create]
       end
 
-      resources :test_runs, only: [:index, :show]
+      resources :test_runs, only: [:index, :show] do
+        collection do
+          get "suites", to: "test_runs#suites"
+        end
+      end
 
       get "queue", to: "queue#show"
 

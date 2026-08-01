@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_190005) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -129,7 +129,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_190005) do
 
   create_table "test_runs", force: :cascade do |t|
     t.string "branch", default: "main", null: false
-    t.string "commit_sha", null: false
+    t.string "commit_sha"
     t.integer "completed_jobs", default: 0, null: false
     t.datetime "created_at", null: false
     t.integer "failed_jobs", default: 0, null: false
@@ -139,12 +139,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_190005) do
     t.integer "queued_jobs", default: 0, null: false
     t.datetime "started_at"
     t.string "status", default: "queued", null: false
+    t.bigint "test_suite_id"
     t.integer "total_jobs", default: 0, null: false
     t.integer "total_tests", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["project_id", "created_at"], name: "index_test_runs_on_project_id_and_created_at"
     t.index ["project_id"], name: "index_test_runs_on_project_id"
     t.index ["status"], name: "index_test_runs_on_status"
+    t.index ["test_suite_id"], name: "index_test_runs_on_test_suite_id"
+  end
+
+  create_table "test_suites", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.integer "total_tests", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_test_suites_on_name", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -169,5 +180,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_190005) do
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users"
   add_foreign_key "test_runs", "projects"
+  add_foreign_key "test_runs", "test_suites"
   add_foreign_key "users", "teams"
 end

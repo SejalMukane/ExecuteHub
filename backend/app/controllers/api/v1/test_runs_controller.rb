@@ -24,6 +24,7 @@ module Api
       # logic lives in TestScheduler.
       def create
         test_run = @project.test_runs.new(test_run_params)
+        apply_test_suite(test_run)
 
         if test_run.save
           Rails.logger.info("[TestRunsController] Created TestRun ##{test_run.id} for Project ##{@project.id}")
@@ -32,6 +33,11 @@ module Api
         else
           render json: { errors: test_run.errors.full_messages }, status: :unprocessable_entity
         end
+      end
+
+      # GET /api/v1/test_suites — the suites a run can be built from.
+      def suites
+        render json: { test_suites: TestSuite.order(:name).map { |suite| test_suite_response(suite) } }
       end
 
       private
@@ -64,7 +70,31 @@ module Api
       end
 
       def test_run_params
-        params.permit(:branch, :commit_sha, :total_tests)
+        params.permit(:branch, :commit_sha, :total_tests, :test_suite_id)
+      end
+
+      # When a suite is chosen, pull its test count so the scheduler can chunk
+      # automatically. A manual total_tests still wins if both are supplied.
+      def apply_test_suite(test_run)
+        return if params[:test_suite_id].blank?
+
+        suite = TestSuite.find_by(id: params[:test_suite_id])
+        unless suite
+          test_run.errors.add(:test_suite_id, "not found")
+          return
+        end
+
+        test_run.test_suite = suite
+        test_run.total_tests = suite.total_tests if params[:total_tests].blank?
+      end
+
+      def test_suite_response(suite)
+        {
+          id: suite.id,
+          name: suite.name,
+          description: suite.description,
+          total_tests: suite.total_tests
+        }
       end
 
       def test_run_response(test_run, include_jobs: false)
@@ -74,6 +104,7 @@ module Api
           project_name: test_run.project.name,
           branch: test_run.branch,
           commit_sha: test_run.commit_sha,
+          test_suite: test_run.test_suite ? test_suite_response(test_run.test_suite) : nil,
           status: test_run.status,
           total_tests: test_run.total_tests,
           total_jobs: test_run.total_jobs,

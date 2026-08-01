@@ -1,5 +1,6 @@
 class TestRun < ApplicationRecord
   belongs_to :project
+  belongs_to :test_suite, optional: true
   has_many :jobs, dependent: :destroy
 
   enum :status, {
@@ -12,7 +13,6 @@ class TestRun < ApplicationRecord
   }, default: :queued
 
   validates :branch, presence: true
-  validates :commit_sha, presence: true
   validates :total_tests, presence: true,
             numericality: { only_integer: true, greater_than: 0 }
   validates :total_jobs, :completed_jobs, :failed_jobs, :queued_jobs,

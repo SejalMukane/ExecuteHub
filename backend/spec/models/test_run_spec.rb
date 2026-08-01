@@ -3,12 +3,12 @@ require "rails_helper"
 RSpec.describe TestRun, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:project) }
+    it { is_expected.to belong_to(:test_suite).optional }
     it { is_expected.to have_many(:jobs).dependent(:destroy) }
   end
 
   describe "validations" do
     it { is_expected.to validate_presence_of(:branch) }
-    it { is_expected.to validate_presence_of(:commit_sha) }
     it { is_expected.to validate_presence_of(:total_tests) }
 
     it "rejects a non-positive total_tests" do

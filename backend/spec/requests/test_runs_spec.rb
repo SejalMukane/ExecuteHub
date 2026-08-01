@@ -67,6 +67,55 @@ RSpec.describe "TestRuns API", type: :request do
     end
   end
 
+  describe "GET /api/v1/test_runs/suites" do
+    it "lists test suites" do
+      suite = create(:test_suite, name: "Smoke Tests", total_tests: 120)
+
+      get "/api/v1/test_runs/suites", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)["test_suites"]
+      expect(body.map { |s| s["id"] }).to include(suite.id)
+      expect(body.find { |s| s["id"] == suite.id }["total_tests"]).to eq(120)
+    end
+
+    it "requires authentication" do
+      get "/api/v1/test_runs/suites"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST with a test suite" do
+    let(:suite) { create(:test_suite, name: "Regression", total_tests: 40) }
+
+    it "uses the suite's test count when total_tests is omitted" do
+      post "/api/v1/projects/#{project.id}/test_runs",
+           params: { branch: "main", test_suite_id: suite.id }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      run = JSON.parse(response.body)["test_run"]
+      expect(run["total_tests"]).to eq(40)
+      expect(run["total_jobs"]).to eq(2)
+      expect(run["test_suite"]["id"]).to eq(suite.id)
+    end
+
+    it "lets an explicit total_tests override the suite" do
+      post "/api/v1/projects/#{project.id}/test_runs",
+           params: { branch: "main", test_suite_id: suite.id, total_tests: 100 },
+           headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(JSON.parse(response.body)["test_run"]["total_tests"]).to eq(100)
+    end
+
+    it "returns 422 for an unknown suite" do
+      post "/api/v1/projects/#{project.id}/test_runs",
+           params: { branch: "main", test_suite_id: 999_999 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
+
   describe "GET /api/v1/test_runs" do
     it "lists the user's test runs newest first" do
       older = create(:test_run, project: project, created_at: 2.days.ago)
