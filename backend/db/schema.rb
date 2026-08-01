@@ -10,9 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "artifacts", force: :cascade do |t|
+    t.string "artifact_type", null: false
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.string "path", null: false
+    t.bigint "size", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id", "artifact_type"], name: "index_artifacts_on_job_id_and_artifact_type"
+    t.index ["job_id"], name: "index_artifacts_on_job_id"
+  end
 
   create_table "browser_images", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -32,6 +43,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_browser_sessions_on_user_id"
+  end
+
+  create_table "execution_logs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "job_id", null: false
+    t.string "level", default: "info", null: false
+    t.text "message", null: false
+    t.datetime "timestamp", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id", "timestamp"], name: "index_execution_logs_on_job_id_and_timestamp"
+    t.index ["job_id"], name: "index_execution_logs_on_job_id"
   end
 
   create_table "github_integrations", force: :cascade do |t|
@@ -95,8 +117,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
 
   create_table "jobs", force: :cascade do |t|
     t.integer "chunk_number", default: 1, null: false
+    t.string "container_id"
     t.datetime "created_at", null: false
+    t.integer "duration_ms"
+    t.text "error_message"
+    t.integer "failed_tests", default: 0, null: false
     t.datetime "finished_at"
+    t.integer "passed_tests", default: 0, null: false
     t.integer "retry_count", default: 0, null: false
     t.datetime "started_at"
     t.string "status", default: "queued", null: false
@@ -104,6 +131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
     t.bigint "test_run_id", null: false
     t.datetime "updated_at", null: false
     t.string "worker_id"
+    t.index ["container_id"], name: "index_jobs_on_container_id"
     t.index ["status"], name: "index_jobs_on_status"
     t.index ["test_run_id", "chunk_number"], name: "index_jobs_on_test_run_id_and_chunk_number", unique: true
     t.index ["test_run_id"], name: "index_jobs_on_test_run_id"
@@ -170,7 +198,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_200002) do
     t.index ["team_id"], name: "index_users_on_team_id"
   end
 
+  add_foreign_key "artifacts", "jobs"
   add_foreign_key "browser_sessions", "users"
+  add_foreign_key "execution_logs", "jobs"
   add_foreign_key "github_integrations", "users"
   add_foreign_key "github_repositories", "github_integrations"
   add_foreign_key "github_repositories", "projects"

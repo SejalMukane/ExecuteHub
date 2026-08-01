@@ -9,6 +9,7 @@ RSpec.describe PlaywrightOutputParser, type: :service do
   before do
     FileUtils.cp(fixture, results_file)
     FileUtils.mkdir_p(File.join(artifacts_dir, "homepage-x"))
+    FileUtils.mkdir_p(File.join(artifacts_dir, "login-x"))
     File.write(File.join(artifacts_dir, "homepage-x", "trace.zip"), "zip")
     File.write(File.join(artifacts_dir, "homepage-x", "video.webm"), "webm")
     File.write(File.join(artifacts_dir, "login-x", "test-failed-1.png"), "png")

@@ -51,7 +51,7 @@ class WorkerExecutor
     job.update!(container_id: container.id)
     log(:info, "Container created (#{container.id})")
 
-    docker.start(container)
+    @docker.start(container)
     log(:info, "Container started")
 
     run_playwright(container)
@@ -70,8 +70,8 @@ class WorkerExecutor
 
   def run_playwright(container)
     log(:info, "Running Playwright tests")
-    docker.stream_logs(container) { |line| log(:info, clean(line)) }
-    @exit_code = docker.exit_code(container)
+    @docker.stream_logs(container) { |line| log(:info, clean(line)) }
+    @exit_code = @docker.exit_code(container)
     log(:info, "Playwright finished (exit code #{@exit_code})")
   end
 
@@ -178,6 +178,8 @@ class WorkerExecutor
   end
 
   def log(level, message)
+    return if message.blank?
+
     ExecutionLog.create!(job: job, level: level, message: message)
     Rails.logger.info("[WorkerExecutor] Job ##{job.id}: #{message}") if level == "info"
     Rails.logger.warn("[WorkerExecutor] Job ##{job.id}: #{message}") if level == "warn"
@@ -189,7 +191,10 @@ class WorkerExecutor
     line.gsub(/\e\[[0-9;]*m/, "")
   end
 
+  # executehub.yml is loaded into ActiveSupport::OrderedOptions: the top-level
+  # [] access is key-indifferent, but nested values are plain symbol-keyed
+  # Hashes. with_indifferent_access lets us read string keys everywhere.
   def settings
-    Rails.configuration.executehub.fetch("worker", {})
+    @settings ||= (Rails.configuration.executehub["worker"] || {}).with_indifferent_access
   end
 end
