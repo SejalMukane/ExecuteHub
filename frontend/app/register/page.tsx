@@ -53,7 +53,7 @@ export default function RegisterPage() {
         {/* Header */}
         <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center border-b border-neutral-900">
           <Link href="/" className="font-bold tracking-tight text-base hover:text-neutral-300 transition-colors">
-            BrowserCloud
+            ExecuteHub
           </Link>
         </header>
 
@@ -62,7 +62,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-sm">
             <div className="mb-8">
               <h1 className="text-2xl font-bold tracking-tight mb-2">Create an account</h1>
-              <p className="text-sm text-neutral-400">Get started with BrowserCloud in seconds.</p>
+              <p className="text-sm text-neutral-400">Get started with ExecuteHub in seconds.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -146,7 +146,7 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <footer className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center border-t border-neutral-900">
-          <p className="text-xs text-neutral-500">&copy; BrowserCloud</p>
+          <p className="text-xs text-neutral-500">&copy; ExecuteHub</p>
         </footer>
       </div>
     </div>

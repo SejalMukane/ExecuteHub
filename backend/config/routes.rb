@@ -12,6 +12,8 @@ Rails.application.routes.draw do
       get    "session",       to: "sessions#index"
       delete "session/:id",   to: "sessions#destroy"
       get    "browser-images", to: "sessions#images"
+
+      resources :projects, only: [:index, :show, :create, :update, :destroy]
     end
   end
 

@@ -54,12 +54,24 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  role: string;
+  team_id: number | null;
   created_at: string;
 }
 
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+  repository_url: string | null;
+  team_id: number | null;
+  user_id: number | null;
+  created_at: string;
 }
 
 export interface BrowserImage {
@@ -124,4 +136,43 @@ export const api = {
 
   stopSession: (token: string, id: number) =>
     request<{ session: BrowserSession }>(`/session/${id}`, { method: "DELETE", token }),
+
+  listProjects: (token: string) =>
+    request<{ projects: Project[] }>("/projects", { token }),
+
+  createProject: (
+    token: string,
+    data: { name: string; description?: string; repositoryUrl?: string }
+  ) =>
+    request<{ project: Project }>("/projects", {
+      method: "POST",
+      token,
+      body: {
+        project: {
+          name: data.name,
+          description: data.description,
+          repository_url: data.repositoryUrl,
+        },
+      },
+    }),
+
+  updateProject: (
+    token: string,
+    id: number,
+    data: { name: string; description?: string; repositoryUrl?: string }
+  ) =>
+    request<{ project: Project }>(`/projects/${id}`, {
+      method: "PUT",
+      token,
+      body: {
+        project: {
+          name: data.name,
+          description: data.description,
+          repository_url: data.repositoryUrl,
+        },
+      },
+    }),
+
+  deleteProject: (token: string, id: number) =>
+    request<{ project: Project }>(`/projects/${id}`, { method: "DELETE", token }),
 };

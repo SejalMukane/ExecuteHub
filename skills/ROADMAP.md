@@ -1,6 +1,6 @@
-# QualityHub Development Roadmap
+# ExecuteHub Development Roadmap
 
-This roadmap outlines a 10-week plan to build QualityHub from project foundation to production-ready distributed test orchestration platform.
+This roadmap outlines a 10-week plan to build ExecuteHub from project foundation to production-ready distributed test orchestration platform.
 
 ---
 
@@ -223,7 +223,7 @@ This roadmap outlines a 10-week plan to build QualityHub from project foundation
 
 ### Deliverable
 
-✅ GitHub → Jenkins → QualityHub works end-to-end.
+✅ GitHub → Jenkins → ExecuteHub works end-to-end.
 
 ---
 
@@ -279,7 +279,7 @@ This roadmap outlines a 10-week plan to build QualityHub from project foundation
 
 ### Deliverable
 
-✅ Production-ready QualityHub v1.0 with documentation and demo video.
+✅ Production-ready ExecuteHub v1.0 with documentation and demo video.
 
 ---
 

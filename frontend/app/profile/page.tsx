@@ -93,9 +93,10 @@ export default function ProfilePage() {
         <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link href="/" className="font-bold tracking-tight text-base">BrowserCloud</Link>
+              <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
               <nav className="hidden sm:flex items-center gap-6 text-sm">
                 <Link href="/dashboard" className="text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+                <Link href="/projects" className="text-neutral-400 hover:text-white transition-colors">Projects</Link>
                 <span className="text-white font-medium">Profile</span>
               </nav>
             </div>

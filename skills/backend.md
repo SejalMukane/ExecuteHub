@@ -1,10 +1,10 @@
-# QualityHub Backend
+# ExecuteHub Backend
 
-This document describes the backend architecture, services, and responsibilities that power QualityHub.
+This document describes the backend architecture, services, and responsibilities that power ExecuteHub.
 
 ## Overview
 
-The QualityHub backend is composed of multiple services working together:
+The ExecuteHub backend is composed of multiple services working together:
 
 ```
 Ruby on Rails Control Plane
@@ -91,7 +91,7 @@ The scheduler is responsible for the Fan-Out phase of distributed execution. It 
   "commit_sha": "a1b2c3d4",
   "test_files": ["tests/login.spec.ts", "tests/checkout.spec.ts"],
   "browser": "chromium",
-  "worker_image": "qualityhub/playwright-worker:v1",
+  "worker_image": "executehub/playwright-worker:v1",
   "artifact_prefix": "test-runs/154/job-1234/"
 }
 ```
@@ -189,11 +189,11 @@ Sidekiq workers handle asynchronous tasks:
 Backend services use environment variables:
 
 ```bash
-DATABASE_URL=postgresql://user:pass@localhost:5432/qualityhub
+DATABASE_URL=postgresql://user:pass@localhost:5432/ExecuteHub
 REDIS_URL=redis://localhost:6379/0
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=qualityhub-artifacts
+AWS_S3_BUCKET=executehub-artifacts
 GITHUB_WEBHOOK_SECRET=...
 JWT_SECRET=...
 ```

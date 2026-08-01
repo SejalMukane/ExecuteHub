@@ -1,10 +1,10 @@
-# QualityHub Testing Strategy
+# ExecuteHub Testing Strategy
 
-This document describes the testing approach used to ensure QualityHub is reliable, scalable, and maintainable.
+This document describes the testing approach used to ensure ExecuteHub is reliable, scalable, and maintainable.
 
 ## Overview
 
-QualityHub itself is a testing platform, but it also requires comprehensive testing. The testing strategy covers unit tests, integration tests, end-to-end tests, contract tests, and performance tests.
+ExecuteHub itself is a testing platform, but it also requires comprehensive testing. The testing strategy covers unit tests, integration tests, end-to-end tests, contract tests, and performance tests.
 
 ## Testing Pyramid
 

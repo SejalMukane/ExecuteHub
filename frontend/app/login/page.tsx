@@ -48,7 +48,7 @@ export default function LoginPage() {
         {/* Header */}
         <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center border-b border-neutral-900">
           <Link href="/" className="font-bold tracking-tight text-base hover:text-neutral-300 transition-colors">
-            BrowserCloud
+            ExecuteHub
           </Link>
         </header>
 
@@ -125,7 +125,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <footer className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center border-t border-neutral-900">
-          <p className="text-xs text-neutral-500">&copy; BrowserCloud</p>
+          <p className="text-xs text-neutral-500">&copy; ExecuteHub</p>
         </footer>
       </div>
     </div>

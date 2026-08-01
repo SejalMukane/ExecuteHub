@@ -1,10 +1,10 @@
-# QualityHub Architecture
+# ExecuteHub Architecture
 
-This document describes the high-level system architecture of QualityHub, a cloud-native distributed test orchestration platform built for large-scale browser test execution.
+This document describes the high-level system architecture of ExecuteHub, a cloud-native distributed test orchestration platform built for large-scale browser test execution.
 
 ## Overview
 
-QualityHub separates concerns into a control plane, an execution plane, and an observability layer. The architecture follows a **Fan-Out / Fan-In** pattern:
+ExecuteHub separates concerns into a control plane, an execution plane, and an observability layer. The architecture follows a **Fan-Out / Fan-In** pattern:
 
 - **Fan-Out:** The scheduler splits a test suite into independent jobs and distributes them across a pool of Playwright workers.
 - **Fan-In:** The result aggregator collects worker outputs, merges them, and produces a unified test report.
@@ -59,7 +59,7 @@ This design enables parallel execution, horizontal scalability, and fault isolat
 
 ### 1. React + TypeScript Dashboard
 
-The user-facing application where developers and QA engineers interact with QualityHub. It provides project management, test run triggering, real-time execution monitoring, failure debugging, and report review.
+The user-facing application where developers and QA engineers interact with ExecuteHub. It provides project management, test run triggering, real-time execution monitoring, failure debugging, and report review.
 
 **Responsibilities:**
 

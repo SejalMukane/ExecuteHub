@@ -1,10 +1,10 @@
-# QualityHub User Flow
+# ExecuteHub User Flow
 
-This document describes the end-to-end journey of a developer or QA engineer using QualityHub to execute, monitor, and act on distributed browser test runs.
+This document describes the end-to-end journey of a developer or QA engineer using ExecuteHub to execute, monitor, and act on distributed browser test runs.
 
 ## Overview
 
-QualityHub is designed to make large-scale browser testing simple and actionable. The user flow moves from project setup through test execution, debugging, and final deployment decision-making.
+ExecuteHub is designed to make large-scale browser testing simple and actionable. The user flow moves from project setup through test execution, debugging, and final deployment decision-making.
 
 ## User Journey
 
@@ -22,7 +22,7 @@ Developer Pushes Code
 (or Click "Run Tests")
    │
    ▼
-QualityHub Creates Test Run
+ExecuteHub Creates Test Run
    │
    ▼
 Splits Tests Across Multiple Workers
@@ -44,7 +44,7 @@ Approve or Reject Deployment
 
 ## Step 1: Login
 
-The user opens QualityHub and logs in with their account credentials.
+The user opens ExecuteHub and logs in with their account credentials.
 
 After logging in, the dashboard displays:
 
@@ -65,15 +65,15 @@ The user clicks **New Project** and enters the following details:
 - **Default Branch:** main
 - **Playwright Configuration:** test configuration file
 
-At this point, QualityHub knows which application to test and how to run its Playwright suite.
+At this point, ExecuteHub knows which application to test and how to run its Playwright suite.
 
 ---
 
 ## Step 3: Connect GitHub
 
-The user connects their GitHub repository to QualityHub.
+The user connects their GitHub repository to ExecuteHub.
 
-Once connected, every code push or Pull Request automatically sends a webhook to QualityHub, triggering test runs without manual intervention.
+Once connected, every code push or Pull Request automatically sends a webhook to ExecuteHub, triggering test runs without manual intervention.
 
 Users can also click **Run Tests** manually at any time.
 
@@ -83,7 +83,7 @@ Users can also click **Run Tests** manually at any time.
 
 A developer pushes code that fixes the checkout page. Instead of guessing whether anything else broke, the user clicks **Run Test Suite**.
 
-QualityHub receives the request and immediately creates a new Test Run:
+ExecuteHub receives the request and immediately creates a new Test Run:
 
 - **Test Run #154**
 - **Status:** Preparing...
@@ -116,7 +116,7 @@ The user can also monitor which workers are busy, idle, or finished.
 
 Suppose 5 tests fail. The user clicks one of the failing tests.
 
-QualityHub immediately shows all relevant debugging information:
+ExecuteHub immediately shows all relevant debugging information:
 
 - Screenshot
 - Video recording
@@ -130,7 +130,7 @@ This eliminates the need to manually reproduce the issue.
 
 ## Step 7: Review the Report
 
-When all workers finish, QualityHub aggregates the individual worker results into a single comprehensive report.
+When all workers finish, ExecuteHub aggregates the individual worker results into a single comprehensive report.
 
 Example:
 
@@ -149,7 +149,7 @@ Recommendation: Ready for Deployment
 
 ## Step 8: Team Notification
 
-Once execution finishes, QualityHub automatically notifies the engineering team through:
+Once execution finishes, ExecuteHub automatically notifies the engineering team through:
 
 - Slack notification
 - Discord notification
@@ -175,7 +175,7 @@ Imagine working at a browser testing company like BrowserStack. A teammate updat
 - Did Chrome still pass?
 - Did mobile tests fail?
 
-Instead of checking everything manually, the user opens QualityHub and clicks **Run Tests**.
+Instead of checking everything manually, the user opens ExecuteHub and clicks **Run Tests**.
 
 Within a few minutes, the platform has:
 
@@ -221,4 +221,4 @@ Deploy    and Fix
 
 ## Summary
 
-QualityHub turns browser testing from a slow, manual bottleneck into a fast, automated, and observable part of the release process. Users configure once, trigger runs automatically or manually, monitor progress live, debug failures with rich artifacts, and make deployment decisions based on a clear release readiness score.
+ExecuteHub turns browser testing from a slow, manual bottleneck into a fast, automated, and observable part of the release process. Users configure once, trigger runs automatically or manually, monitor progress live, debug failures with rich artifacts, and make deployment decisions based on a clear release readiness score.

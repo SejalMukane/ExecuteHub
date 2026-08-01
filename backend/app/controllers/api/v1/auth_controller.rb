@@ -60,6 +60,8 @@ module Api
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
+          team_id: user.team_id,
           created_at: user.created_at
         }
       end

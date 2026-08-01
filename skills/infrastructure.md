@@ -1,10 +1,10 @@
-# QualityHub Infrastructure
+# ExecuteHub Infrastructure
 
-This document describes the cloud infrastructure, containerization, orchestration, and observability setup for QualityHub.
+This document describes the cloud infrastructure, containerization, orchestration, and observability setup for ExecuteHub.
 
 ## Overview
 
-QualityHub is designed to run on AWS using containerized services managed by Kubernetes. Local development uses Docker Compose to simulate the production stack.
+ExecuteHub is designed to run on AWS using containerized services managed by Kubernetes. Local development uses Docker Compose to simulate the production stack.
 
 ## Infrastructure Stack
 
@@ -51,7 +51,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: qualityhub_development
+      POSTGRES_DB: executehub_development
     ports:
       - "5432:5432"
 
@@ -107,9 +107,9 @@ services:
 
 ```yaml
 namespaces:
-  - qualityhub-production
-  - qualityhub-staging
-  - qualityhub-monitoring
+  - executehub-production
+  - executehub-staging
+  - executehub-monitoring
 ```
 
 ### Deployments
@@ -135,12 +135,12 @@ spec:
     spec:
       containers:
         - name: worker
-          image: qualityhub/playwright-worker:v1
+          image: executehub/playwright-worker:v1
           env:
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: qualityhub-secrets
+                  name: executehub-secrets
                   key: redis_url
 ```
 
@@ -172,7 +172,7 @@ infrastructure/terraform/
 
 ```
 infrastructure/helm/
-├── qualityhub/
+├── executehub/
 │   ├── Chart.yaml
 │   ├── values.yaml
 │   └── templates/
@@ -194,7 +194,7 @@ infrastructure/helm/
 
 ### Jenkins Integration
 
-- Trigger QualityHub test runs from Jenkins pipelines
+- Trigger ExecuteHub test runs from Jenkins pipelines
 - Block deployments if Release Readiness Score is too low
 - Receive build status updates
 

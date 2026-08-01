@@ -1,10 +1,10 @@
-# QualityHub Security
+# ExecuteHub Security
 
-This document outlines the security model, practices, and controls implemented in QualityHub.
+This document outlines the security model, practices, and controls implemented in ExecuteHub.
 
 ## Overview
 
-Security is critical for a platform that connects to source code repositories, executes arbitrary browser tests, and stores sensitive artifacts. QualityHub applies defense-in-depth across authentication, authorization, isolation, secrets management, and data protection.
+Security is critical for a platform that connects to source code repositories, executes arbitrary browser tests, and stores sensitive artifacts. ExecuteHub applies defense-in-depth across authentication, authorization, isolation, secrets management, and data protection.
 
 ## Authentication
 

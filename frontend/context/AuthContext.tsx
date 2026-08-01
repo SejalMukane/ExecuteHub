@@ -12,7 +12,7 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const TOKEN_KEY = "browsercloud_token";
+const TOKEN_KEY = "executehub_token";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 

@@ -1,6 +1,6 @@
-# QualityHub Database Design
+# ExecuteHub Database Design
 
-This document describes the PostgreSQL database schema that powers QualityHub.
+This document describes the PostgreSQL database schema that powers ExecuteHub.
 
 ## Overview
 

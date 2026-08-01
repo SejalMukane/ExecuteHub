@@ -1,6 +1,6 @@
-# QualityHub Development Guide
+# ExecuteHub Development Guide
 
-This document explains how to set up and run QualityHub in a local development environment.
+This document explains how to set up and run ExecuteHub in a local development environment.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ Before starting, ensure you have the following installed:
 ## Repository Structure
 
 ```
-qualityhub/
+executehub/
 ├── backend/                 # Ruby on Rails API
 ├── dashboard/               # React + TypeScript frontend
 ├── scheduler/               # Test scheduler service
@@ -32,8 +32,8 @@ qualityhub/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/qualityhub.git
-cd qualityhub
+git clone https://github.com/your-org/ExecuteHub.git
+cd ExecuteHub
 ```
 
 ### 2. Start Infrastructure Services
@@ -100,7 +100,7 @@ ruby aggregator.rb
 
 ```bash
 cd worker
-docker build -t qualityhub/playwright-worker:dev .
+docker build -t executehub/playwright-worker:dev .
 ```
 
 ## Environment Variables
@@ -108,12 +108,12 @@ docker build -t qualityhub/playwright-worker:dev .
 ### Backend
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/qualityhub_development
+DATABASE_URL=postgresql://postgres:password@localhost:5432/executehub_development
 REDIS_URL=redis://localhost:6379/0
 AWS_ACCESS_KEY_ID=minioadmin
 AWS_SECRET_ACCESS_KEY=minioadmin
 AWS_ENDPOINT=http://localhost:9000
-AWS_S3_BUCKET=qualityhub-artifacts
+AWS_S3_BUCKET=executehub-artifacts
 JWT_SECRET=your-jwt-secret
 GITHUB_WEBHOOK_SECRET=your-webhook-secret
 ```
@@ -164,7 +164,7 @@ npx playwright test
 | Reset database | `rails db:drop db:create db:migrate db:seed` |
 | Run Rails console | `rails c` |
 | Run a specific test | `bundle exec rspec spec/models/user_spec.rb` |
-| Rebuild worker image | `docker build -t qualityhub/playwright-worker:dev .` |
+| Rebuild worker image | `docker build -t executehub/playwright-worker:dev .` |
 | View logs | `docker-compose -f infrastructure/docker-compose.dev.yml logs -f` |
 
 ## Local GitHub Webhook Testing
@@ -196,7 +196,7 @@ Ensure Redis is running and `REDIS_URL` is correct.
 Create the bucket manually:
 
 ```bash
-aws --endpoint-url=http://localhost:9000 s3 mb s3://qualityhub-artifacts
+aws --endpoint-url=http://localhost:9000 s3 mb s3://executehub-artifacts
 ```
 
 ## Recommended Tools

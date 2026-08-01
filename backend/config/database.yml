@@ -2,32 +2,32 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  username: <%= ENV.fetch("DB_USERNAME") { "browsercloud" } %>
-  password: <%= ENV.fetch("DB_PASSWORD") { "browsercloud_dev" } %>
+  username: <%= ENV.fetch("DB_USERNAME") { "executehub" } %>
+  password: <%= ENV.fetch("DB_PASSWORD") { "executehub_dev" } %>
   host: <%= ENV.fetch("DB_HOST") { "127.0.0.1" } %>
   port: <%= ENV.fetch("DB_PORT") { 5434 } %>
 
 development:
   <<: *default
-  database: browsercloud_development
+  database: executehub_development
 
 test:
   <<: *default
-  database: browsercloud_test
+  database: executehub_test
 
 production:
   primary:
     <<: *default
-    database: <%= ENV.fetch("DB_NAME") { "browsercloud_production" } %>
+    database: <%= ENV.fetch("DB_NAME") { "executehub_production" } %>
   cache:
     <<: *default
-    database: browsercloud_production_cache
+    database: executehub_production_cache
     migrations_paths: db/cache_migrate
   queue:
     <<: *default
-    database: browsercloud_production_queue
+    database: executehub_production_queue
     migrations_paths: db/queue_migrate
   cable:
     <<: *default
-    database: browsercloud_production_cable
+    database: executehub_production_cable
     migrations_paths: db/cable_migrate

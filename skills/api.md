@@ -1,11 +1,11 @@
-# QualityHub API Design
+# ExecuteHub API Design
 
-This document defines the REST API contracts used by the QualityHub control plane. The API enables the dashboard, GitHub webhooks, Jenkins, and workers to interact with the platform.
+This document defines the REST API contracts used by the ExecuteHub control plane. The API enables the dashboard, GitHub webhooks, Jenkins, and workers to interact with the platform.
 
 ## Base URL
 
 ```
-https://api.qualityhub.io/v1
+https://api.executehub.io/v1
 ```
 
 ## Authentication
@@ -339,7 +339,7 @@ Register uploaded artifacts.
 Real-time updates are delivered via WebSockets on:
 
 ```
-wss://api.qualityhub.io/cable
+wss://api.executehub.io/cable
 ```
 
 ### Channels

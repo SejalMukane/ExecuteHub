@@ -9,9 +9,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "BrowserCloud Lite",
+  title: "ExecuteHub Lite",
   description:
-    "BrowserCloud Lite is a cloud-native platform that enables users to launch isolated browser sessions on demand through a web interface. It manages browser allocation, session scheduling, resource utilization, and automatic cleanup — demonstrating large-scale browser infrastructure engineering.",
+    "ExecuteHub Lite is a cloud-native platform that enables users to launch isolated browser sessions on demand through a web interface. It manages browser allocation, session scheduling, resource utilization, and automatic cleanup — demonstrating large-scale browser infrastructure engineering.",
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
-# QualityHub Frontend
+# ExecuteHub Frontend
 
-This document describes the React + TypeScript frontend of QualityHub.
+This document describes the React + TypeScript frontend of ExecuteHub.
 
 ## Overview
 
