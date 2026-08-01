@@ -29,3 +29,6 @@ yarn-error.log*
 
 # Dependency directories (if any at root)
 /node_modules
+
+# Local execution artifacts (screenshots, videos, traces)
+/backend/storage
