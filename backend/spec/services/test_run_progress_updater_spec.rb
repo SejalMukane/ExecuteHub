@@ -46,6 +46,19 @@ RSpec.describe TestRunProgressUpdater, type: :service do
       end
     end
 
+    context "with jobs still uploading artifacts" do
+      it "keeps the run active instead of completing it" do
+        test_run = create(:test_run)
+        create(:job, test_run: test_run, status: :uploading_artifacts)
+
+        described_class.call(test_run)
+
+        test_run.reload
+        expect(test_run.status).to eq("running")
+        expect(test_run.finished_at).to be_nil
+      end
+    end
+
     context "with failed jobs and no active jobs" do
       it "marks the run failed" do
         test_run = create(:test_run)

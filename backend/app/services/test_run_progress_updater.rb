@@ -23,6 +23,7 @@ class TestRunProgressUpdater
     queued = counts.fetch("queued", 0)
     running = counts.fetch("running", 0)
     retrying = counts.fetch("retrying", 0)
+    uploading = counts.fetch("uploading_artifacts", 0)
 
     progress = total.zero? ? 0.0 : (completed.to_f / total * 100).round(1)
 
@@ -34,7 +35,8 @@ class TestRunProgressUpdater
       progress_percentage: progress
     )
 
-    transition_status(queued: queued, running: running, retrying: retrying, failed: failed)
+    transition_status(queued: queued, running: running, retrying: retrying,
+                      uploading: uploading, failed: failed)
 
     Rails.logger.info(
       "[TestRunProgressUpdater] Progress Updated for TestRun ##{@test_run.id}: #{progress}% (#{completed}/#{total} jobs)"
@@ -45,10 +47,11 @@ class TestRunProgressUpdater
   private
 
   # Runs the TestRun to completion only when every Job is in a terminal state.
-  def transition_status(queued:, running:, retrying:, failed:)
-    if queued.zero? && running.zero? && retrying.zero? && @test_run.jobs.count.positive?
+  # Jobs that are still uploading artifacts keep the run active.
+  def transition_status(queued:, running:, retrying:, uploading:, failed:)
+    if queued.zero? && running.zero? && retrying.zero? && uploading.zero? && @test_run.jobs.count.positive?
       @test_run.update!(status: failed.positive? ? :failed : :completed, finished_at: Time.current)
-    elsif @test_run.queued? && running.positive?
+    elsif @test_run.queued? && (running.positive? || uploading.positive?)
       @test_run.update!(status: :running)
     end
   end

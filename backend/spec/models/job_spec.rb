@@ -3,6 +3,8 @@ require "rails_helper"
 RSpec.describe Job, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:test_run) }
+    it { is_expected.to have_many(:execution_logs).dependent(:destroy) }
+    it { is_expected.to have_many(:artifacts).dependent(:destroy) }
   end
 
   describe "validations" do
@@ -27,7 +29,7 @@ RSpec.describe Job, type: :model do
 
     it "exposes the documented statuses" do
       expect(described_class.statuses.keys).to match_array(
-        %w[queued running completed failed retrying]
+        %w[queued running uploading_artifacts completed failed retrying]
       )
     end
   end
@@ -57,6 +59,26 @@ RSpec.describe Job, type: :model do
       expect { job.mark_failed! }
         .to change { job.reload.status }.from("running").to("failed")
         .and change { job.finished_at }.from(nil)
+    end
+  end
+
+  describe "#mark_uploading_artifacts!" do
+    it "sets status to uploading_artifacts" do
+      job = create(:job, status: :running)
+      expect { job.mark_uploading_artifacts! }
+        .to change { job.reload.status }.from("running").to("uploading_artifacts")
+    end
+  end
+
+  describe "#duration_seconds" do
+    it "computes the wall-clock duration from the timestamps" do
+      job = build(:job, started_at: 10.seconds.ago, finished_at: Time.current)
+      expect(job.duration_seconds).to be_within(0.1).of(10.0)
+    end
+
+    it "returns nil when timestamps are missing" do
+      job = build(:job, started_at: nil, finished_at: nil)
+      expect(job.duration_seconds).to be_nil
     end
   end
 
