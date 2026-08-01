@@ -3,7 +3,6 @@
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
 **Last updated:** 1 August 2026 (Week 3 complete)
-
 ---
 
 ## Project Overview
@@ -307,6 +306,7 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 | Test execution worker | `TestExecutionWorker` (queue `test_execution`, retry 3) — marks job running, simulates work (`worker_simulate_delay`), marks job completed/failed, updates run progress via `TestRunProgressUpdater` | ✅ Done |
 | Progress tracking | `TestRunProgressUpdater` — recomputes job counters from the DB, `progress = completed/total*100`, transitions run to running/completed/failed | ✅ Done |
 | Queue dashboard service | `QueueDashboard` — queued/running from Sidekiq API, completed/failed from the `jobs` table | ✅ Done |
+| Test suites | `test_suites` table + `TestSuite` model (name, description, total_tests); seeded suites (Smoke Tests=120, Regression=850, Checkout=52); `test_runs.test_suite_id` FK; creating a run with `test_suite_id` auto-derives the test count so the scheduler chunks automatically; explicit `total_tests` still overrides | ✅ Done |
 
 ### Backend APIs (new)
 
@@ -315,6 +315,7 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 | `/api/v1/projects/:project_id/test_runs` | POST | Create test run → chunks into jobs → enqueue (admin/developer only) | ✅ Done |
 | `/api/v1/test_runs/:id` | GET | Run details + jobs + progress (auth) | ✅ Done |
 | `/api/v1/test_runs` | GET | List runs newest first (visible projects) | ✅ Done |
+| `/api/v1/test_runs/suites` | GET | List test suites (id, name, description, total_tests) | ✅ Done |
 | `/api/v1/queue` | GET | Queue stats: queued/running/completed/failed jobs | ✅ Done |
 
 ### Frontend
@@ -324,7 +325,7 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 | Test Runs page | `/test-runs` — table (run #, project, branch/commit, status badge, jobs, progress bar), 5s auto-refresh | ✅ Done |
 | Test Run detail page | `/test-runs/[id]` — run info, stats cards, job list with status badges | ✅ Done |
 | Queue dashboard page | `/queue` — 4 stat cards (queued/running/completed/failed) + throughput, 5s auto-refresh | ✅ Done |
-| Run Test UI | Project detail `/projects/[id]` — Run Test button + modal (branch, commit SHA, total tests) → redirects to run detail | ✅ Done |
+| Run Test UI | Project detail `/projects/[id]` — Run Test button + modal (Test Suite dropdown, Branch, Commit SHA optional, manual test count) → redirects to run detail | ✅ Done |
 | Status badges | `StatusBadge` component — Queued/Retrying=blue, Running/Scheduling=yellow, Completed=green, Failed=red + `ProgressBar` | ✅ Done |
 | Shared shell + nav | `DashboardShell` — sidebar nav now includes Test Runs + Queue on all pages | ✅ Done |
 
@@ -336,8 +337,9 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 
 | Table | Columns | Notes |
 |-------|---------|-------|
-| `test_runs` | project_id (FK), branch, commit_sha, status, total_tests, total_jobs, completed_jobs, failed_jobs, queued_jobs, progress_percentage, started_at, finished_at | statuses queued/scheduling/running/completed/failed/cancelled |
+| `test_runs` | project_id (FK), test_suite_id (FK), branch, commit_sha (nullable), status, total_tests, total_jobs, completed_jobs, failed_jobs, queued_jobs, progress_percentage, started_at, finished_at | statuses queued/scheduling/running/completed/failed/cancelled |
 | `jobs` | test_run_id (FK), chunk_number (unique per run), status, worker_id, error_message, started_at, finished_at | statuses queued/running/completed/failed/retrying |
+| `test_suites` | name (unique), description, total_tests | seeded: Smoke Tests=120, Regression=850, Checkout=52 |
 
 ### Testing
 
@@ -347,12 +349,13 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 
 ### Key Files — Backend
 
-- `backend/app/models/test_run.rb`, `job.rb` (+ `project.rb` `has_many :test_runs`)
+- `backend/app/models/test_run.rb`, `job.rb`, `test_suite.rb` (+ `project.rb` `has_many :test_runs`)
 - `backend/app/services/test_scheduler.rb`, `test_run_progress_updater.rb`, `queue_dashboard.rb`
 - `backend/app/workers/test_execution_worker.rb`
 - `backend/app/controllers/api/v1/test_runs_controller.rb`, `queue_controller.rb`
 - `backend/config/executehub.yml`, `backend/config/sidekiq.yml`, `backend/config/initializers/sidekiq.rb`
-- `backend/db/migrate/20260801190004_create_test_runs.rb`, `20260801190005_create_jobs.rb`
+- `backend/db/migrate/20260801190004_create_test_runs.rb`, `20260801190005_create_jobs.rb`, `20260801200001_create_test_suites.rb`, `20260801200002_make_commit_sha_nullable_on_test_runs.rb`
+- `backend/db/seeds.rb` — browser images + test suites
 - `backend/script/smoke_orchestration.rb`
 
 ### Key Files — Frontend
@@ -360,7 +363,7 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 - `frontend/lib/api.ts` — TestRun/Job/QueueStats types + `createTestRun/listTestRuns/getTestRun/getQueueStats`
 - `frontend/components/DashboardShell.tsx`, `StatusBadge.tsx`
 - `frontend/app/test-runs/page.tsx`, `frontend/app/test-runs/[id]/page.tsx`, `frontend/app/queue/page.tsx`
-- `frontend/app/projects/[id]/page.tsx` — Run Test modal
+- `frontend/app/projects/[id]/page.tsx` — Run Test modal (suite dropdown, branch, optional commit)
 
 ---
 
