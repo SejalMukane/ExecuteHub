@@ -421,6 +421,16 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 - **Smoke test** `backend/script/smoke_execution.rb` — real Docker execution, passes (job completed, summary + 4 artifacts persisted, run progress 100%).
 - **Frontend** — `npx tsc --noEmit` clean; eslint clean for new files; `npm run build` passes.
 
+### Live verification (browser + Docker Desktop)
+
+Verified end-to-end against the running stack (frontend `:3000`, backend `:3001`, Sidekiq, PostgreSQL, Redis):
+
+- **Run #22** — `total_tests: 40` → 2 jobs, each ran the real 2-test Playwright suite in its own container in parallel. Both `completed`: `passed=2 failed=0`, durations ~16.8s/~16.9s, 14 `ExecutionLog` lines each (`Starting execution for Job #128` … `Container removed`), and 4 artifacts each (2 traces + 2 videos) persisted + served via the API. Run progress 100%.
+- **Docker Desktop** — during execution the containers are visible as `executehub-job-<id>-<hex>` running `executehub-playwright:latest` (e.g. `executehub-job-142-971dd787`), then disappear within ~10s because `WorkerExecutor` destroys them in an `ensure` block after each job.
+- **Workers page** — `http://localhost:3000/test-runs/22` → job → live status card, Execution Logs tab (2s auto-refresh), Artifacts tab (video player + trace download).
+
+**Gotcha:** a long-running Sidekiq does **not** reload code in development. Jobs failed instantly with empty `error_message` because Sidekiq was still running the pre-fix `WorkerExecutor` (started before the Part 12 bug fixes). Fix: stop it and restart `bundle exec sidekiq -C config\sidekiq.yml` after changing worker code.
+
 ### Key Files
 
 - `playwright-runner/` — sample Playwright project (`package.json`, `playwright.config.ts`, `tests/`)
