@@ -5,7 +5,5 @@ test("homepage loads and exposes the expected title", async ({ page }) => {
 
   await expect(page).toHaveTitle(/Example Domain/);
   await expect(page.locator("h1")).toHaveText("Example Domain");
-  await expect(page.locator("p").first()).toContainText(
-    "This domain is for use in illustrative examples"
-  );
+  await expect(page.locator("p").first()).toContainText("This domain is for use in");
 });

@@ -1,0 +1,25 @@
+# ExecuteHub Playwright runner image.
+#
+# Built once, reused for many executions. Playwright downloads browser
+# binaries at build time (into /ms-playwright via the official base image);
+# each container execution only runs `npx playwright test` and writes its
+# artifacts to /app/artifacts, which the worker copies out with `docker cp`.
+#
+# Build (from repository root):
+#   docker build -f Dockerfile.playwright -t executehub-playwright:latest .
+FROM mcr.microsoft.com/playwright:v1.61.1-noble
+
+WORKDIR /app
+
+# Copy dependency manifests first so `npm ci` can be cached across builds.
+COPY playwright-runner/package.json playwright-runner/package-lock.json ./
+RUN npm ci
+
+# Bake the sample test project into the image. Tests live in /app/tests.
+COPY playwright-runner/ ./
+
+# Default command executed when the container starts. The Playwright config
+# already points `outputDir` at /app/artifacts and writes the JSON report to
+# /app/artifacts/test-results.json, so the worker knows exactly where to find
+# results and artifacts after execution.
+CMD ["npx", "playwright", "test"]
