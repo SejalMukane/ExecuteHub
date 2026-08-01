@@ -1,0 +1,13 @@
+{
+  "name": "executehub-playwright-runner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sample Playwright test project executed by ExecuteHub inside Docker containers.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
