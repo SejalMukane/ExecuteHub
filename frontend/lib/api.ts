@@ -156,10 +156,45 @@ export interface Job {
   worker_id: string | null;
   chunk_number: number;
   test_count: number;
-  status: "queued" | "running" | "completed" | "failed" | "retrying";
+  status: "queued" | "running" | "uploading_artifacts" | "completed" | "failed" | "retrying";
   started_at: string | null;
   finished_at: string | null;
   retry_count: number;
+}
+
+export interface ExecutionLog {
+  id: number;
+  timestamp: string;
+  level: "info" | "warn" | "error";
+  message: string;
+}
+
+export interface Artifact {
+  id: number;
+  job_id: number;
+  artifact_type: "screenshot" | "video" | "trace";
+  path: string;
+  size: number;
+  created_at: string;
+}
+
+export interface JobSummary {
+  passed: number;
+  failed: number;
+  duration_ms: number | null;
+  exit_status: string;
+}
+
+export interface JobDetail extends Job {
+  container_id: string | null;
+  passed_tests: number;
+  failed_tests: number;
+  duration_ms: number | null;
+  duration_seconds: number | null;
+  error_message: string | null;
+  logs?: ExecutionLog[];
+  artifacts?: Artifact[];
+  summary?: JobSummary;
 }
 
 export interface TestSuite {
@@ -336,6 +371,25 @@ export const api = {
 
   getTestRun: (token: string, id: number) =>
     request<{ test_run: TestRun }>(`/test_runs/${id}`, { token }),
+
+  getJob: (token: string, id: number) =>
+    request<{ job: JobDetail }>(`/jobs/${id}`, { token }),
+
+  getJobLogs: (token: string, id: number) =>
+    request<{ logs: ExecutionLog[] }>(`/jobs/${id}/logs`, { token }),
+
+  getJobArtifacts: (token: string, id: number) =>
+    request<{ artifacts: Artifact[] }>(`/jobs/${id}/artifacts`, { token }),
+
+  getArtifactFile: async (token: string, id: number): Promise<Blob> => {
+    const response = await fetch(`${API_BASE_URL}/artifacts/${id}/file`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new ApiError(response.status, "Failed to load artifact");
+    }
+    return response.blob();
+  },
 
   getQueueStats: (token: string) =>
     request<{ queue: QueueStats }>("/queue", { token }),

@@ -235,7 +235,14 @@ export default function TestRunDetailPage() {
                   <tbody>
                     {jobs.map((job) => (
                       <tr key={job.id} className="border-b border-neutral-900/50 hover:bg-neutral-900/20 transition-colors">
-                        <td className="px-5 py-3.5 text-white font-medium">#{job.chunk_number}</td>
+                        <td className="px-5 py-3.5">
+                          <Link
+                            href={`/test-runs/${run.id}/jobs/${job.id}`}
+                            className="text-white font-medium hover:text-neutral-300 transition-colors"
+                          >
+                            #{job.chunk_number}
+                          </Link>
+                        </td>
                         <td className="px-5 py-3.5 text-neutral-400 tabular-nums">{job.test_count}</td>
                         <td className="px-5 py-3.5">
                           <StatusBadge

@@ -29,6 +29,7 @@ export function statusTone(status: string): StatusTone {
       return "blue";
     case "running":
     case "scheduling":
+    case "uploading_artifacts":
       return "yellow";
     case "completed":
     case "success":
