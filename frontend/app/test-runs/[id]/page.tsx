@@ -126,6 +126,12 @@ export default function TestRunDetailPage() {
                     <GitCommit className="w-3.5 h-3.5 text-neutral-500" />
                     {shortSha(run.commit_sha)}
                   </span>
+                  {run.test_suite && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-neutral-500" />
+                      {run.test_suite.name}
+                    </span>
+                  )}
                 </p>
               </div>
               <StatusBadge
@@ -174,6 +180,12 @@ export default function TestRunDetailPage() {
                   <dt className="text-neutral-500">Commit</dt>
                   <dd className="text-neutral-200 font-mono text-xs">{shortSha(run.commit_sha)}</dd>
                 </div>
+                {run.test_suite && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-neutral-500">Suite</dt>
+                    <dd className="text-neutral-200 font-medium">{run.test_suite.name}</dd>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <dt className="text-neutral-500">Status</dt>
                   <dd>

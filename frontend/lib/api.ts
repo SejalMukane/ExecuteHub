@@ -162,12 +162,20 @@ export interface Job {
   retry_count: number;
 }
 
+export interface TestSuite {
+  id: number;
+  name: string;
+  description: string | null;
+  total_tests: number;
+}
+
 export interface TestRun {
   id: number;
   project_id: number;
   project_name: string;
   branch: string;
-  commit_sha: string;
+  commit_sha: string | null;
+  test_suite: TestSuite | null;
   status: TestRunStatus;
   total_tests: number;
   total_jobs: number;
@@ -307,7 +315,7 @@ export const api = {
   createTestRun: (
     token: string,
     projectId: number,
-    data: { branch: string; commit_sha: string; total_tests: number }
+    data: { branch: string; commit_sha?: string; total_tests?: number; test_suite_id?: number }
   ) =>
     request<{ test_run: TestRun }>(`/projects/${projectId}/test_runs`, {
       method: "POST",
@@ -316,8 +324,12 @@ export const api = {
         branch: data.branch,
         commit_sha: data.commit_sha,
         total_tests: data.total_tests,
+        test_suite_id: data.test_suite_id,
       },
     }),
+
+  listTestSuites: (token: string) =>
+    request<{ test_suites: TestSuite[] }>("/test_runs/suites", { token }),
 
   listTestRuns: (token: string) =>
     request<{ test_runs: TestRun[] }>("/test_runs", { token }),

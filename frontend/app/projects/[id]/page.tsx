@@ -35,6 +35,7 @@ import {
   GithubRepositoryOption,
   GithubRepository,
   GithubDelivery,
+  TestSuite,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -76,6 +77,8 @@ export default function ProjectDetailPage() {
   const [showRunModal, setShowRunModal] = useState(false);
   const [runBranch, setRunBranch] = useState("");
   const [runCommitSha, setRunCommitSha] = useState("");
+  const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
+  const [selectedSuiteId, setSelectedSuiteId] = useState<number | "">("");
   const [runTotalTests, setRunTotalTests] = useState("100");
   const [startingRun, setStartingRun] = useState(false);
 
@@ -229,16 +232,32 @@ export default function ProjectDetailPage() {
     router.replace("/");
   };
 
+  const openRunModal = async () => {
+    setShowRunModal(true);
+    if (testSuites.length > 0) return;
+    try {
+      const res = await api.listTestSuites(token!);
+      setTestSuites(res.test_suites);
+      const smoke = res.test_suites.find((s) => s.name.toLowerCase().includes("smoke"));
+      setSelectedSuiteId(smoke ? smoke.id : res.test_suites[0]?.id ?? "");
+    } catch {
+      setError("Failed to load test suites.");
+    }
+  };
+
   const handleRunTest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !project) return;
     setStartingRun(true);
     setError(null);
+    const selectedSuite = testSuites.find((s) => s.id === selectedSuiteId);
     try {
       const res = await api.createTestRun(token, project.id, {
         branch: runBranch || "main",
-        commit_sha: runCommitSha,
-        total_tests: parseInt(runTotalTests, 10),
+        commit_sha: runCommitSha || undefined,
+        ...(selectedSuite
+          ? { test_suite_id: selectedSuite.id }
+          : { total_tests: parseInt(runTotalTests, 10) }),
       });
       setShowRunModal(false);
       setNotice(`Test run #${res.test_run.id} scheduled — ${res.test_run.total_jobs} job(s) queued.`);
@@ -347,7 +366,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center gap-3">
                   {canWrite && (
                     <button
-                      onClick={() => setShowRunModal(true)}
+                      onClick={openRunModal}
                       className="px-4 py-2.5 bg-white text-black text-sm font-medium rounded-md hover:bg-neutral-200 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
                     >
                       <Play className="w-4 h-4" />
@@ -743,6 +762,54 @@ export default function ProjectDetailPage() {
 
             <form onSubmit={handleRunTest} className="space-y-4">
               <div>
+                <label htmlFor="run-suite" className="text-sm font-medium text-neutral-300 mb-1.5 block">
+                  Test Suite
+                </label>
+                <select
+                  id="run-suite"
+                  value={selectedSuiteId}
+                  onChange={(e) => setSelectedSuiteId(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                >
+                  <option value="" disabled>
+                    Select a suite...
+                  </option>
+                  {testSuites.map((suite) => (
+                    <option key={suite.id} value={suite.id}>
+                      {suite.name} — {suite.total_tests} tests
+                    </option>
+                  ))}
+                  <option value="">Custom (manual count)</option>
+                </select>
+                {selectedSuiteId !== "" && (
+                  <p className="text-xs text-neutral-500 mt-1.5">
+                    {testSuites.find((s) => s.id === selectedSuiteId)?.description} Split into chunks
+                    of 20 per job.
+                  </p>
+                )}
+              </div>
+
+              {selectedSuiteId === "" && (
+                <div>
+                  <label htmlFor="run-tests" className="text-sm font-medium text-neutral-300 mb-1.5 block">
+                    Total Tests
+                  </label>
+                  <input
+                    id="run-tests"
+                    type="number"
+                    required
+                    min={1}
+                    value={runTotalTests}
+                    onChange={(e) => setRunTotalTests(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1.5">
+                    Tests are split into chunks of 20 per job.
+                  </p>
+                </div>
+              )}
+
+              <div>
                 <label htmlFor="run-branch" className="text-sm font-medium text-neutral-300 mb-1.5 block">
                   Branch
                 </label>
@@ -758,35 +825,16 @@ export default function ProjectDetailPage() {
 
               <div>
                 <label htmlFor="run-commit" className="text-sm font-medium text-neutral-300 mb-1.5 block">
-                  Commit SHA
+                  Commit SHA <span className="text-neutral-600">(optional)</span>
                 </label>
                 <input
                   id="run-commit"
                   type="text"
-                  required
                   value={runCommitSha}
                   onChange={(e) => setRunCommitSha(e.target.value)}
                   placeholder="e.g. a1b2c3d4e5f6..."
                   className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors font-mono"
                 />
-              </div>
-
-              <div>
-                <label htmlFor="run-tests" className="text-sm font-medium text-neutral-300 mb-1.5 block">
-                  Total Tests
-                </label>
-                <input
-                  id="run-tests"
-                  type="number"
-                  required
-                  min={1}
-                  value={runTotalTests}
-                  onChange={(e) => setRunTotalTests(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
-                />
-                <p className="text-xs text-neutral-500 mt-1.5">
-                  Tests are split into chunks of 20 per job.
-                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
