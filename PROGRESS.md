@@ -146,6 +146,102 @@ ExecuteHub is a cloud-native platform that launches isolated browser sessions on
 
 ---
 
+## Week 2 — GitHub Integration & Project Management
+
+**Status:** ✅ Complete
+
+**Goal:** Connect GitHub repositories to projects.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Implement GitHub OAuth | OAuth2 device-style flow via GitHub web app; `/github/oauth/start` returns signed `state` (JWT carrying `user_id`), `/github/oauth/callback` exchanges the code for a token, upserts a `GithubIntegration`, redirects to frontend | ✅ Done |
+| Build repository connection flow | `GET /github/repositories` lists the user's GitHub repos; `POST /github/repositories` links a repo to a project (stores metadata) and registers a webhook | ✅ Done |
+| Register GitHub webhooks | Creates a repo webhook (`push`, `pull_request`) at `GITHUB_WEBHOOK_URL/<slug>` with a per-webhook random secret | ✅ Done |
+| Verify webhook signatures | `GithubWebhookSignature` verifies `X-Hub-Signature-256` (HMAC-SHA256) with constant-time comparison; invalid signatures are recorded and rejected (401); payloads for the wrong repo are rejected (403) | ✅ Done |
+| Store repository metadata | `github_repositories` stores full_name, html_url, clone/ssh URL, default branch, private flag, description; deliveries are stored in `github_webhook_deliveries` | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Add Connect GitHub button | On `/projects` header — starts OAuth; shows connected badge `@login` once linked; success/error banners via `?github=` query param | ✅ Done |
+| Build repository selection UI | Modal on project detail page with searchable repo list (private lock icon, description) | ✅ Done |
+| Create project settings page | `/projects/[id]` — edit name/description/repo URL, connect/disconnect GitHub account | ✅ Done |
+| Add repository information page | `/projects/[id]` GitHub card — repo metadata, webhook status (events, payload URL, last delivery), disconnect, and a recent webhook deliveries table (event, delivery id, signature verified, branch, time) | ✅ Done |
+
+### Deliverable
+
+✅ GitHub repositories can be connected and webhooks are received successfully.
+
+### Backend APIs (new)
+
+| Endpoint | Method | Description | Status |
+|----------|--------|-------------|--------|
+| `/api/v1/github/oauth/start` | GET | Return GitHub authorize URL with signed state (auth required) | ✅ Done |
+| `/api/v1/github/oauth/callback` | GET | Exchange code → token, store integration, redirect to frontend | ✅ Done |
+| `/api/v1/github/status` | GET | `{ connected, login }` for current user | ✅ Done |
+| `/api/v1/github/disconnect` | DELETE | Remove integration + linked repos/webhooks (best-effort GitHub cleanup) | ✅ Done |
+| `/api/v1/github/repositories` | GET | List user's GitHub repositories | ✅ Done |
+| `/api/v1/github/repositories` | POST | Connect a repo to a project + register webhook | ✅ Done |
+| `/api/v1/github/repositories` | DELETE | Disconnect repo (removes webhook) | ✅ Done |
+| `/api/v1/github/projects/:project_id/repository` | GET | Project repo + webhook + recent deliveries | ✅ Done |
+| `/api/v1/github/webhooks/:slug` | POST | Public webhook receiver — verifies signature, records delivery | ✅ Done |
+
+### Database (new tables)
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| `github_integrations` | user_id, github_user_id, github_login, access_token, scope | one per user |
+| `github_repositories` | project_id (unique), github_integration_id, github_repo_id (unique), full_name (unique), html_url, clone_url, ssh_url, default_branch, description, private | one per project |
+| `github_webhooks` | github_repository_id, github_webhook_id, slug (unique), url, secret, events, active, last_delivery_at | per-repo; slug identifies the receiver |
+| `github_webhook_deliveries` | github_webhook_id, delivery_id, event, signature_valid, payload (jsonb), received_at | audit of received events |
+
+### GitHub Setup (required for live testing)
+
+Set these env vars on the backend before starting `rails server`:
+
+```powershell
+$env:GITHUB_CLIENT_ID = "<client id>"
+$env:GITHUB_CLIENT_SECRET = "<client secret>"
+$env:GITHUB_REDIRECT_URI = "http://localhost:3001/api/v1/github/oauth/callback"
+$env:GITHUB_WEBHOOK_URL = "<public https url>/api/v1/github/webhooks"   # ngrok/smee for local dev
+$env:FRONTEND_URL = "http://localhost:3000"
+```
+
+1. Create an OAuth App in GitHub → Settings → Developer settings → OAuth Apps, set the callback URL to `GITHUB_REDIRECT_URI`.
+2. `GITHUB_WEBHOOK_URL` must be publicly reachable for GitHub to deliver webhooks (use a tunnel like `ngrok` or `smee` during local dev).
+3. Run migrations: `ruby bin\rails db:migrate`.
+
+### Local webhook testing (no tunnel needed)
+
+`backend/script/simulate_webhook.rb` builds a fake push payload, signs it with the stored secret, and POSTs it to the local receiver:
+
+```powershell
+ruby bin\rails runner script/simulate_webhook.rb testslug123 push
+# valid signature   -> 200
+# invalid signature -> 401
+```
+
+Verified during development: valid signature → 200 + delivery stored; invalid signature → 401 (recorded as `signature_valid: false`); payload for a different repo → 403.
+
+### Key Files — GitHub Integration
+
+- `backend/app/models/github_integration.rb`, `github_repository.rb`, `github_webhook.rb`, `github_webhook_delivery.rb`
+- `backend/app/services/github_service.rb` — GitHub REST API client (Net::HTTP, no extra gems)
+- `backend/app/services/github_webhook_signature.rb` — HMAC-SHA256 verification
+- `backend/app/controllers/api/v1/github_auth_controller.rb` — OAuth start/callback/status/disconnect
+- `backend/app/controllers/api/v1/github_repositories_controller.rb` — list/connect/disconnect/show
+- `backend/app/controllers/api/v1/github_webhooks_controller.rb` — public webhook receiver
+- `backend/script/simulate_webhook.rb` — local webhook simulator
+- `frontend/components/GithubIcon.tsx` — GitHub logo SVG (brand icons removed from lucide-react)
+- `frontend/lib/api.ts` — `github*` API methods
+- `frontend/app/projects/page.tsx` — Connect GitHub button + status badge
+- `frontend/app/projects/[id]/page.tsx` — project settings + repository info + repo selection modal + deliveries
+
+---
+
 ## Infrastructure Decisions
 
 | Item | Choice | Notes |
@@ -207,6 +303,7 @@ Open `http://localhost:3000` → register → dashboard.
 ## Next Steps (Planned)
 
 - [x] Week 1 — Foundation & Authentication ✅ (Rails, PostgreSQL, JWT auth, User + Team + Project models, REST APIs, RBAC, auth pages, dashboard + sidebar, projects page, profile page)
+- [x] Week 2 — GitHub Integration & Project Management ✅ (GitHub OAuth, repo connection flow, webhook registration + signature verification, repo metadata storage, Connect GitHub button, repo selection UI, project settings page, repository info page)
 - [ ] Docker container orchestration for Chrome browsers
 - [ ] Redis queue (Sidekiq) for session creation/cleanup
 - [ ] ActionCable real-time session status

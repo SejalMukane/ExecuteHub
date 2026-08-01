@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Server,
@@ -14,8 +14,11 @@ import {
   Plus,
   Trash2,
   GitBranch,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
-import { api, Project } from "@/lib/api";
+import GithubIcon from "@/components/GithubIcon";
+import { api, Project, GithubStatus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 function relativeTime(iso: string | null): string {
@@ -27,8 +30,9 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
-export default function ProjectsPage() {
+function ProjectsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, token, loading, logout } = useAuth();
   const [ready, setReady] = useState(false);
 
@@ -39,6 +43,8 @@ export default function ProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [github, setGithub] = useState<GithubStatus | null>(null);
+  const [githubConnecting, setGithubConnecting] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -63,10 +69,26 @@ export default function ProjectsPage() {
         if (!cancelled) setError("Failed to load projects.");
       });
 
+    api
+      .githubStatus(token)
+      .then((res) => {
+        if (!cancelled) setGithub(res);
+      })
+      .catch(() => {
+        if (!cancelled) setGithub({ connected: false, login: null });
+      });
+
     return () => {
       cancelled = true;
     };
   }, [ready, token]);
+
+  useEffect(() => {
+    const status = searchParams.get("github");
+    if (status === "connected" || status === "error") {
+      router.replace("/projects");
+    }
+  }, [searchParams, router]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +129,18 @@ export default function ProjectsPage() {
     router.replace("/");
   };
 
+  const handleConnectGithub = async () => {
+    setGithubConnecting(true);
+    setError(null);
+    try {
+      const res = await api.githubOAuthStart(token!);
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start GitHub connection.");
+      setGithubConnecting(false);
+    }
+  };
+
   if (loading || !ready) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -116,6 +150,8 @@ export default function ProjectsPage() {
   }
 
   const canWrite = user?.role === "admin" || user?.role === "developer";
+
+  const oauthNotice = searchParams.get("github");
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, active: false },
@@ -185,13 +221,52 @@ export default function ProjectsPage() {
           {/* Main content */}
           <main className="flex-1 min-w-0 py-8">
             {/* Page header */}
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-              <p className="text-sm text-neutral-400 mt-1">Create and manage the applications your team tests.</p>
+            <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+                <p className="text-sm text-neutral-400 mt-1">Create and manage the applications your team tests.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {github?.connected ? (
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm">
+                    <GithubIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">GitHub</span>
+                    <span className="font-medium">@{github.login}</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleConnectGithub}
+                    disabled={githubConnecting || !canWrite}
+                    className="px-4 py-2.5 bg-white text-black text-sm font-medium rounded-md hover:bg-neutral-200 transition-colors flex items-center gap-2 shadow-lg shadow-white/10 disabled:opacity-50"
+                  >
+                    {githubConnecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <GithubIcon className="w-4 h-4" />
+                    )}
+                    Connect GitHub
+                  </button>
+                )}
+              </div>
             </div>
 
+            {oauthNotice === "connected" && (
+              <div className="mb-6 px-4 py-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                GitHub connected successfully. You can now link repositories to projects.
+              </div>
+            )}
+
+            {oauthNotice === "error" && (
+              <div className="mb-6 px-4 py-3 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                GitHub connection failed. Please try again.
+              </div>
+            )}
+
             {error && (
-              <div className="mb-6 px-4 py-3 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+              <div className="mb-6 px-4 py-3 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
                 {error}
               </div>
             )}
@@ -301,7 +376,12 @@ export default function ProjectsPage() {
                                 <FolderKanban className="w-4 h-4 text-neutral-400" />
                               </div>
                               <div>
-                                <p className="text-white font-medium">{project.name}</p>
+                                <Link
+                                  href={`/projects/${project.id}`}
+                                  className="text-white font-medium hover:text-neutral-300 transition-colors"
+                                >
+                                  {project.name}
+                                </Link>
                                 {project.description && (
                                   <p className="text-xs text-neutral-500 mt-0.5">{project.description}</p>
                                 )}
@@ -320,22 +400,30 @@ export default function ProjectsPage() {
                           </td>
                           <td className="px-5 py-3.5 text-neutral-400">{relativeTime(project.created_at)}</td>
                           <td className="px-5 py-3.5 text-right">
-                            {canWrite ? (
-                              <button
-                                onClick={() => handleDelete(project.id)}
-                                disabled={deletingId === project.id}
-                                className="text-neutral-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                                aria-label="Delete project"
+                            <div className="flex items-center justify-end gap-3">
+                              <Link
+                                href={`/projects/${project.id}`}
+                                className="text-neutral-500 hover:text-white transition-colors text-xs font-medium uppercase tracking-wider"
                               >
-                                {deletingId === project.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </button>
-                            ) : (
-                              <span className="text-neutral-700">—</span>
-                            )}
+                                Settings
+                              </Link>
+                              {canWrite ? (
+                                <button
+                                  onClick={() => handleDelete(project.id)}
+                                  disabled={deletingId === project.id}
+                                  className="text-neutral-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                                  aria-label="Delete project"
+                                >
+                                  {deletingId === project.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="text-neutral-700">—</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -348,5 +436,13 @@ export default function ProjectsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProjectsPageContent />
+    </Suspense>
   );
 }

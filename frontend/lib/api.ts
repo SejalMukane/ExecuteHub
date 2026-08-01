@@ -92,6 +92,56 @@ export interface BrowserSession {
   created_at: string;
 }
 
+export interface GithubStatus {
+  connected: boolean;
+  login: string | null;
+}
+
+export interface GithubRepositoryOption {
+  id: number;
+  full_name: string;
+  html_url: string;
+  private: boolean;
+  description: string | null;
+  default_branch: string | null;
+}
+
+export interface GithubWebhookInfo {
+  id: number;
+  github_webhook_id: number | null;
+  url: string | null;
+  events: string[];
+  active: boolean;
+  last_delivery_at: string | null;
+}
+
+export interface GithubRepository {
+  id: number;
+  full_name: string;
+  html_url: string;
+  clone_url: string | null;
+  ssh_url: string | null;
+  default_branch: string | null;
+  private: boolean;
+  description: string | null;
+  created_at: string;
+  webhook: GithubWebhookInfo | null;
+}
+
+export interface GithubDelivery {
+  id: number;
+  delivery_id: string | null;
+  event: string | null;
+  signature_valid: boolean;
+  received_at: string | null;
+  payload: Record<string, unknown> | null;
+}
+
+export interface GithubRepositoryResponse {
+  github_repository: GithubRepository | null;
+  deliveries: GithubDelivery[];
+}
+
 export const api = {
   register: (name: string, email: string, password: string, passwordConfirmation: string) =>
     request<AuthResponse>("/register", {
@@ -175,4 +225,36 @@ export const api = {
 
   deleteProject: (token: string, id: number) =>
     request<{ project: Project }>(`/projects/${id}`, { method: "DELETE", token }),
+
+  githubStatus: (token: string) =>
+    request<GithubStatus>("/github/status", { token }),
+
+  githubOAuthStart: (token: string) =>
+    request<{ url: string }>("/github/oauth/start", { token }),
+
+  githubDisconnect: (token: string) =>
+    request<undefined>("/github/disconnect", { method: "DELETE", token }),
+
+  listGithubRepositories: (token: string) =>
+    request<{ repositories: GithubRepositoryOption[] }>("/github/repositories", { token }),
+
+  connectGithubRepository: (token: string, projectId: number, fullName: string) =>
+    request<{ github_repository: GithubRepository }>("/github/repositories", {
+      method: "POST",
+      token,
+      body: { project_id: projectId, full_name: fullName },
+    }),
+
+  disconnectGithubRepository: (token: string, projectId: number) =>
+    request<undefined>("/github/repositories", {
+      method: "DELETE",
+      token,
+      body: { project_id: projectId },
+    }),
+
+  getGithubRepository: (token: string, projectId: number) =>
+    request<GithubRepositoryResponse>(
+      `/github/projects/${projectId}/repository`,
+      { token }
+    ),
 };

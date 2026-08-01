@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_181012) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_190003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,6 +32,65 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_181012) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_browser_sessions_on_user_id"
+  end
+
+  create_table "github_integrations", force: :cascade do |t|
+    t.string "access_token"
+    t.datetime "created_at", null: false
+    t.string "github_login"
+    t.bigint "github_user_id"
+    t.string "scope"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["github_user_id"], name: "index_github_integrations_on_github_user_id"
+    t.index ["user_id"], name: "index_github_integrations_on_user_id"
+  end
+
+  create_table "github_repositories", force: :cascade do |t|
+    t.string "clone_url"
+    t.datetime "created_at", null: false
+    t.string "default_branch"
+    t.text "description"
+    t.string "full_name", null: false
+    t.bigint "github_integration_id", null: false
+    t.bigint "github_repo_id", null: false
+    t.string "html_url"
+    t.boolean "private", default: false, null: false
+    t.bigint "project_id", null: false
+    t.string "ssh_url"
+    t.datetime "updated_at", null: false
+    t.index ["github_integration_id"], name: "index_github_repositories_on_github_integration_id"
+    t.index ["github_repo_id"], name: "index_github_repositories_on_github_repo_id", unique: true
+    t.index ["project_id"], name: "index_github_repositories_on_project_id", unique: true
+  end
+
+  create_table "github_webhook_deliveries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "delivery_id"
+    t.string "event"
+    t.bigint "github_webhook_id", null: false
+    t.jsonb "payload"
+    t.datetime "received_at"
+    t.boolean "signature_valid", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["delivery_id"], name: "index_github_webhook_deliveries_on_delivery_id"
+    t.index ["github_webhook_id"], name: "index_github_webhook_deliveries_on_github_webhook_id"
+  end
+
+  create_table "github_webhooks", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "events"
+    t.bigint "github_repository_id", null: false
+    t.bigint "github_webhook_id"
+    t.datetime "last_delivery_at"
+    t.string "secret"
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.index ["github_repository_id"], name: "index_github_webhooks_on_github_repository_id"
+    t.index ["github_webhook_id"], name: "index_github_webhooks_on_github_webhook_id", unique: true
+    t.index ["slug"], name: "index_github_webhooks_on_slug", unique: true
   end
 
   create_table "projects", force: :cascade do |t|
@@ -65,6 +124,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_181012) do
   end
 
   add_foreign_key "browser_sessions", "users"
+  add_foreign_key "github_integrations", "users"
+  add_foreign_key "github_repositories", "github_integrations"
+  add_foreign_key "github_repositories", "projects"
+  add_foreign_key "github_webhook_deliveries", "github_webhooks"
+  add_foreign_key "github_webhooks", "github_repositories"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users"
   add_foreign_key "users", "teams"

@@ -14,6 +14,18 @@ Rails.application.routes.draw do
       get    "browser-images", to: "sessions#images"
 
       resources :projects, only: [:index, :show, :create, :update, :destroy]
+
+      get    "github/oauth/start",    to: "github_auth#start"
+      get    "github/oauth/callback", to: "github_auth#callback"
+      get    "github/status",         to: "github_auth#status"
+      delete "github/disconnect",     to: "github_auth#disconnect"
+
+      get    "github/repositories",                  to: "github_repositories#index"
+      post   "github/repositories",                  to: "github_repositories#connect"
+      delete "github/repositories",                  to: "github_repositories#disconnect"
+      get    "github/projects/:project_id/repository", to: "github_repositories#show"
+
+      post "github/webhooks/:slug", to: "github_webhooks#receive"
     end
   end
 
