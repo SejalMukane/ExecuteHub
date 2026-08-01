@@ -2,45 +2,23 @@ require "rails_helper"
 
 RSpec.describe TestExecutionWorker, type: :worker do
   describe "#perform" do
-    it "processes a queued job to completion and updates progress" do
-      test_run = create(:test_run)
-      job = create(:job, test_run: test_run, status: :queued)
-
-      allow_any_instance_of(described_class).to receive(:sleep)
-
-      described_class.new.perform(job.id)
-
-      job.reload
-      test_run.reload
-
-      expect(job.status).to eq("completed")
-      expect(job.finished_at).to be_present
-      expect(test_run.completed_jobs).to eq(1)
-      expect(test_run.progress_percentage).to eq(100.0)
-      expect(test_run.status).to eq("completed")
-    end
-
-    it "sets the worker_id when starting" do
+    it "delegates the job to WorkerExecutor" do
       job = create(:job)
-      allow_any_instance_of(described_class).to receive(:sleep)
+
+      expect(WorkerExecutor).to receive(:execute).with(job)
 
       described_class.new.perform(job.id)
-
-      expect(job.reload.worker_id).to be_present
-      expect(job.started_at).to be_present
     end
 
     it "is a no-op when the job no longer exists" do
-      expect do
-        described_class.new.perform(999_999)
-      end.not_to raise_error
+      expect { described_class.new.perform(999_999) }.not_to raise_error
     end
 
-    it "marks the job failed when execution raises" do
+    it "marks the job failed and re-raises when execution raises" do
       test_run = create(:test_run)
-      job = create(:job, test_run: test_run, status: :running, started_at: Time.current)
+      job = create(:job, test_run: test_run)
 
-      allow_any_instance_of(described_class).to receive(:sleep).and_raise("boom")
+      allow(WorkerExecutor).to receive(:execute).and_raise("boom")
 
       expect { described_class.new.perform(job.id) }.to raise_error("boom")
 
