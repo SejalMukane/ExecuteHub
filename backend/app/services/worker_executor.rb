@@ -82,8 +82,9 @@ class WorkerExecutor
     job_dir = @artifact_store.prepare(job)
     @docker.copy(container, source: settings["container_artifacts_path"], destination: job_dir)
 
-    results_file = job_dir.join("artifacts", settings["results_file"])
-    @summary = @parser.parse(results_file, job_dir)
+    output_dir = job_dir.join("artifacts")
+    results_file = output_dir.join(settings["results_file"])
+    @summary = @parser.parse(results_file, output_dir)
 
     persist_summary
     persist_artifacts

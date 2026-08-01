@@ -1,0 +1,39 @@
+{
+  "config": {
+    "version": "1.61.1"
+  },
+  "suites": [
+    {
+      "title": "homepage.spec.ts",
+      "file": "homepage.spec.ts",
+      "specs": [
+        {
+          "title": "homepage loads and exposes the expected title",
+          "tests": [
+            { "status": "expected", "duration": 930.0, "projectName": "chromium" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "login.spec.ts",
+      "file": "login.spec.ts",
+      "specs": [
+        {
+          "title": "logs in with valid demo credentials",
+          "tests": [
+            { "status": "unexpected", "duration": 8300.0, "projectName": "chromium" }
+          ]
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-08-01T18:41:57.634Z",
+    "duration": 12345.6,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
