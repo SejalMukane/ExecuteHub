@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 1 August 2026 (Week 3 complete)
+**Last updated:** 2 August 2026 (Week 4 complete)
 ---
 
 ## Project Overview
@@ -367,6 +367,91 @@ Verified during development: valid signature → 200 + delivery stored; invalid 
 
 ---
 
+## Week 4 — Real Browser Execution in Docker
+
+**Status:** ✅ Complete
+
+**Goal:** Replace the fake worker sleep with real Playwright execution inside isolated Docker containers — capturing logs, artifacts and execution summaries, persisting them to the DB, exposing APIs, and adding a live Workers page in the frontend.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Playwright sample project | `/playwright-runner` — `homepage.spec.ts` + `login.spec.ts`, config with trace on, video on, screenshots on failure and a JSON reporter writing `artifacts/test-results.json`; `@playwright/test` pinned to exact `1.61.1` (caret would pull 1.62.1 and mismatch the base image's browser revision) | ✅ Done |
+| Reusable Docker image | `Dockerfile.playwright` — from `mcr.microsoft.com/playwright:v1.61.1-noble`, `npm ci` cached layer, `CMD ["npx","playwright","test"]`; verified: `2 passed (10.1s)` | ✅ Done |
+| Docker service | `DockerService` — the only Docker-aware class: `create/start/stream_logs/exit_code/copy/destroy` via Open3 argument arrays (no shell); `DockerError` + `Container` struct | ✅ Done |
+| Execution orchestration | `WorkerExecutor` — owns the full job lifecycle: mark running → create/start container → stream Playwright output into `ExecutionLog`s → mark uploading_artifacts → `docker cp` artifacts → parse JSON report → persist summary + artifacts → completed/failed → `TestRunProgressUpdater` → destroy container (ensure). No Sidekiq logic in the service | ✅ Done |
+| Worker wiring | `TestExecutionWorker` delegates to `WorkerExecutor.execute(job)` with a rescue safety net that marks failed + re-raises | ✅ Done |
+| Job lifecycle fields | Migration adds `container_id`, `passed_tests`, `failed_tests`, `duration_ms`, `error_message` to `jobs`; `uploading_artifacts` status added | ✅ Done |
+| ExecutionLog model | `execution_logs` table (job FK, level, message, timestamp auto-stamped); `chronological`/`reverse_chronological` scopes | ✅ Done |
+| Artifact model + store | `artifacts` table (job FK, artifact_type screenshot/video/trace, path, size); `ArtifactStore` centralises layout `storage/artifacts/job_XX/artifacts/...` with `relative`/`resolve` | ✅ Done |
+| Playwright report parser | `PlaywrightOutputParser` — flattens suites → specs → tests, maps Playwright statuses (expected/unexpected/flaky/skipped), scans `*.png`/`*.webm`/`*.zip` | ✅ Done |
+| Jobs + Artifacts APIs | `GET /api/v1/jobs/:id` (job + logs + artifacts + summary), `GET /api/v1/jobs/:id/logs`, `GET /api/v1/jobs/:id/artifacts`, `GET /api/v1/artifacts/:id/file` (streams bytes); project-scoped visibility | ✅ Done |
+| End-to-end smoke | `backend/script/smoke_execution.rb` — drives the real pipeline (Job → Docker → Playwright → logs → artifacts → parser → DB) and asserts completed state, persisted summary/artifacts and run progress | ✅ Done |
+| RSpec coverage | `docker_service_spec.rb` (stubs `Open3`) + `worker_executor_spec.rb` (stubs DockerService/parser/store) | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Workers / Job Details page | `/test-runs/[id]/jobs/[jobId]` — worker card (name, container id, status, current test, started, duration, CPU/memory placeholders), status cards, live progress bar, tabs Overview / Execution Logs (2s auto-refresh, newest at bottom) / Artifacts (screenshot preview, video player, trace download) / Summary; job rows link from the run detail page | ✅ Done |
+
+### Deliverable
+
+✅ A queued test run now produces real Playwright executions inside per-job Docker containers. `Job` transitions running → uploading_artifacts → completed with `passed_tests`/`failed_tests`/`duration_ms` persisted, Playwright output streamed into `ExecutionLog`s, screenshots/videos/traces copied to `storage/artifacts/job_XX/` and served through the API, and the frontend Workers page shows it all live. `SMOKE EXECUTION PASSED` (2 passed, 4 artifacts, run 100%).
+
+### Database (new/changed)
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| `jobs` (changed) | + container_id, passed_tests, failed_tests, duration_ms, error_message | statuses now include `uploading_artifacts` |
+| `execution_logs` | job_id (FK), level (info/warn/error), message, timestamp | append-only audit |
+| `artifacts` | job_id (FK), artifact_type (screenshot/video/trace), path, size | path relative to `storage/artifacts` |
+
+### Gotchas found by the smoke test
+
+- `config_for` returns `ActiveSupport::OrderedOptions` — top-level `[]` is key-indifferent, but nested values are plain symbol-keyed hashes, so `settings["image"]` returned `nil` (empty image → "no implicit conversion of nil into String"). Fix: `with_indifferent_access` in `WorkerExecutor#settings`.
+- Three latent `docker` vs `@docker` NameErrors (`start`, `stream_logs`, `exit_code`) were only caught by the real smoke run — Part 13 specs (written after) pin the exact calls.
+- Blank / ANSI-only lines streamed from Playwright violated `ExecutionLog`'s `message` presence validation → `log` now skips blank messages.
+- Latent pre-existing bug (noted, out of scope): `TestScheduler` reads `chunk_size` via `OrderedOptions#fetch("chunk_size", 20)`, which is NOT key-indifferent and silently always returns the default `20`. Use `Rails.configuration.executehub["chunk_size"]` if chunk size ever needs to differ from the default.
+
+### Testing
+
+- **RSpec (118 examples, 0 failures)** — incl. new `DockerService` (10) and `WorkerExecutor` (8) specs.
+- **Smoke test** `backend/script/smoke_execution.rb` — real Docker execution, passes (job completed, summary + 4 artifacts persisted, run progress 100%).
+- **Frontend** — `npx tsc --noEmit` clean; eslint clean for new files; `npm run build` passes.
+
+### Key Files
+
+- `playwright-runner/` — sample Playwright project (`package.json`, `playwright.config.ts`, `tests/`)
+- `Dockerfile.playwright` — reusable Playwright image
+- `backend/app/services/worker_executor.rb`, `docker_service.rb`, `artifact_store.rb`, `playwright_output_parser.rb`
+- `backend/app/models/execution_log.rb`, `artifact.rb` (+ `job.rb` lifecycle helpers)
+- `backend/app/controllers/api/v1/jobs_controller.rb`, `artifacts_controller.rb`
+- `backend/script/smoke_execution.rb`
+- `backend/spec/services/docker_service_spec.rb`, `worker_executor_spec.rb`
+- `frontend/app/test-runs/[id]/jobs/[jobId]/page.tsx`, `frontend/lib/api.ts`
+
+### Build & run (Week 4)
+
+```powershell
+# 1. Build the Playwright image (once)
+docker build -f Dockerfile.playwright -t executehub-playwright:latest .
+
+# 2. Apply migrations (dev + test)
+ruby bin\rails db:migrate
+ruby bin\rails db:migrate RAILS_ENV=test
+
+# 3. Smoke the real pipeline (Docker must be running)
+ruby bin\rails runner script/smoke_execution.rb
+# -> SMOKE EXECUTION PASSED
+
+# 4. Run specs
+bundle exec rspec   # 118 examples, 0 failures
+```
+
+---
+
 ## Infrastructure Decisions
 
 | Item | Choice | Notes |
@@ -430,9 +515,9 @@ Open `http://localhost:3000` → register → dashboard.
 - [x] Week 1 — Foundation & Authentication ✅ (Rails, PostgreSQL, JWT auth, User + Team + Project models, REST APIs, RBAC, auth pages, dashboard + sidebar, projects page, profile page)
 - [x] Week 2 — GitHub Integration & Project Management ✅ (GitHub OAuth, repo connection flow, webhook registration + signature verification, repo metadata storage, Connect GitHub button, repo selection UI, project settings page, repository info page)
 - [x] Week 3 — Test Scheduling & Queueing ✅ (TestRun + Job models, chunking scheduler, Redis/Sidekiq `test_execution` queue, log-only worker, progress tracking, Test Runs + Queue API, Run Test UI, Test Runs + Queue pages, RSpec coverage)
-- [ ] Docker container orchestration for Chrome browsers
-- [ ] ActionCable real-time session status
+- [x] Week 4 — Real Browser Execution in Docker ✅ (Playwright runner + Dockerfile, DockerService + WorkerExecutor, real execution in isolated containers, ExecutionLog + Artifact models + ArtifactStore, report parser, Jobs/Artifacts APIs, Workers page, RSpec + smoke coverage)
 - [ ] Session history, idle cleanup, reports
+- [ ] ActionCable real-time session status
 - [ ] Docker Compose local stack
 - [ ] Kubernetes + Jenkins + AWS deployment
 - [ ] Prometheus/Grafana monitoring
