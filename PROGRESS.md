@@ -200,19 +200,67 @@ ExecuteHub is a cloud-native platform that launches isolated browser sessions on
 
 ### GitHub Setup (required for live testing)
 
-Set these env vars on the backend before starting `rails server`:
+The live OAuth + webhook flow needs a GitHub **OAuth App** and a publicly reachable webhook URL. Everything else (repo connection, webhook signature verification) can be tested locally without it.
+
+#### Step 1 — Create a GitHub OAuth App
+
+1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**
+2. **Application name:** ExecuteHub (or anything)
+3. **Homepage URL:** `http://localhost:3000`
+4. **Authorization callback URL:** `http://localhost:3001/api/v1/github/oauth/callback` — this must match `GITHUB_REDIRECT_URI` exactly, otherwise GitHub returns `redirect_uri mismatch`
+5. Click **Register application**
+6. Copy the **Client ID** and generate a **Client secret** on the app's page
+
+#### Step 2 — Set the backend env vars
+
+These are read from the environment at startup, so set them **in the same PowerShell window** before `rails server`:
 
 ```powershell
 $env:GITHUB_CLIENT_ID = "<client id>"
 $env:GITHUB_CLIENT_SECRET = "<client secret>"
-$env:GITHUB_REDIRECT_URI = "http://localhost:3001/api/v1/github/oauth/callback"
-$env:GITHUB_WEBHOOK_URL = "<public https url>/api/v1/github/webhooks"   # ngrok/smee for local dev
-$env:FRONTEND_URL = "http://localhost:3000"
+$env:GITHUB_REDIRECT_URI = "http://localhost:3001/api/v1/github/oauth/callback"   # default if unset
+$env:GITHUB_SCOPE = "repo read:user"                                              # default if unset
+$env:FRONTEND_URL = "http://localhost:3000"                                       # default if unset
+$env:GITHUB_WEBHOOK_URL = "https://<tunnel-host>/api/v1/github/webhooks"          # MUST be public https
+$env:GITHUB_WEBHOOK_EVENTS = "push,pull_request"                                  # default if unset
 ```
 
-1. Create an OAuth App in GitHub → Settings → Developer settings → OAuth Apps, set the callback URL to `GITHUB_REDIRECT_URI`.
-2. `GITHUB_WEBHOOK_URL` must be publicly reachable for GitHub to deliver webhooks (use a tunnel like `ngrok` or `smee` during local dev).
-3. Run migrations: `ruby bin\rails db:migrate`.
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GITHUB_CLIENT_ID` | — (required) | OAuth App client id |
+| `GITHUB_CLIENT_SECRET` | — (required) | OAuth App client secret |
+| `GITHUB_REDIRECT_URI` | `http://localhost:3001/api/v1/github/oauth/callback` | Must match the OAuth App callback URL |
+| `GITHUB_SCOPE` | `repo read:user` | Grants repo access (webhooks + listing) and user profile |
+| `GITHUB_WEBHOOK_URL` | `http://localhost:3001/api/v1/github/webhooks` | Base URL where GitHub posts events; the app appends `/<webhook-slug>` |
+| `GITHUB_WEBHOOK_EVENTS` | `push,pull_request` | Comma-separated events registered on each webhook |
+| `FRONTEND_URL` | `http://localhost:3000` | Where OAuth callback redirects the browser after auth |
+
+#### Step 3 — Expose the webhook endpoint to GitHub
+
+GitHub cannot reach `localhost`, so `GITHUB_WEBHOOK_URL` must be a public HTTPS URL that tunnels to the Rails server:
+
+- **ngrok:** `ngrok http 3001` → set `GITHUB_WEBHOOK_URL = "https://<random>.ngrok-free.app/api/v1/github/webhooks"`
+- **smee:** `npx smee-client --url https://smee.io/<channel> --path /api/v1/github/webhooks --port 3001` (smee forwards to localhost without exposing a real hostname)
+
+`backend/config/environments/development.rb` already whitelists `*.ngrok-free.dev` / `*.ngrok-free.app` hosts so Rails' `HostAuthorization` doesn't reject tunnel requests.
+
+#### Step 4 — Run and verify
+
+```powershell
+docker start browsercloud-postgres            # if not already running
+ruby bin\rails db:migrate                     # apply the 4 GitHub migrations
+ruby bin\rails server -p 3001                 # backend (env vars must be set in this window)
+npm run dev                                   # frontend (from frontend/)
+```
+
+**Verification checklist (full flow):**
+
+- [ ] `/projects` → **Connect GitHub** → lands on `github.com/login/oauth/authorize?...` with a signed `state`
+- [ ] Authorize → browser redirects back to `/projects?github=connected` and the `@<login>` badge appears
+- [ ] `/projects/<id>` → **Connect a repository** → repo list loads → pick a repo → webhook is created
+- [ ] Webhook card shows **Active**, the payload URL `<GITHUB_WEBHOOK_URL>/<slug>`, and events
+- [ ] Push to the repo (or GitHub → repo Settings → Webhooks → **Redeliver**) → the **Recent Webhook Deliveries** table shows a row with **Verified**
+- [ ] Send an unsigned/invalid request → a row appears with **Failed** (signature check)
 
 ### Local webhook testing (no tunnel needed)
 
