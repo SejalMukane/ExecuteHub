@@ -32,6 +32,7 @@ import { api, BrowserImage, BrowserSession, Project } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import BackgroundBlobs from "@/components/BackgroundBlobs";
+import { avatarUrl, getInitials, readAvatarStyle } from "@/lib/avatar";
 
 function formatElapsed(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -101,6 +102,11 @@ export default function DashboardPage() {
   const [stoppingId, setStoppingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [avatarStyle, setAvatarStyle] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAvatarStyle(readAvatarStyle());
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -249,7 +255,22 @@ export default function DashboardPage() {
             <div className="flex items-center gap-4">
               <Bell className="w-4 h-4 text-neutral-500" />
               <ThemeToggle />
-              <span className="text-xs text-neutral-500 hidden sm:block">{user?.email}</span>
+              <span className="hidden sm:flex items-center gap-2.5 text-xs text-neutral-500">
+                {avatarStyle ? (
+                  <img
+                    src={avatarUrl(avatarStyle, user?.email ?? user?.name ?? "user")}
+                    alt=""
+                    className="w-7 h-7 rounded-full object-cover border border-neutral-800"
+                  />
+                ) : (
+                  <span className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center">
+                    {getInitials(user?.name ?? "") && (
+                      <span className="text-[10px] font-semibold text-neutral-300">{getInitials(user?.name ?? "")}</span>
+                    )}
+                  </span>
+                )}
+                {user?.email}
+              </span>
               <button onClick={handleLogout} className="text-neutral-400 hover:text-white transition-colors" aria-label="Log out">
                 <LogOut className="w-4 h-4" />
               </button>

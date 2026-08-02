@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import BackgroundBlobs from "@/components/BackgroundBlobs";
+import { avatarUrl, getInitials, readAvatarStyle } from "@/lib/avatar";
 
 export type NavKey =
   | "dashboard"
@@ -43,6 +44,11 @@ export default function DashboardShell({
 }) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [avatarStyle, setAvatarStyle] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAvatarStyle(readAvatarStyle());
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -71,7 +77,22 @@ export default function DashboardShell({
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-xs text-neutral-500 hidden sm:block">{user?.email}</span>
+              <span className="hidden sm:flex items-center gap-2.5 text-xs text-neutral-500">
+                {avatarStyle ? (
+                  <img
+                    src={avatarUrl(avatarStyle, user?.email ?? user?.name ?? "user")}
+                    alt=""
+                    className="w-7 h-7 rounded-full object-cover border border-neutral-800"
+                  />
+                ) : (
+                  <span className="w-7 h-7 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center">
+                    {getInitials(user?.name ?? "") && (
+                      <span className="text-[10px] font-semibold text-neutral-300">{getInitials(user?.name ?? "")}</span>
+                    )}
+                  </span>
+                )}
+                {user?.email}
+              </span>
               <ThemeToggle />
               <button onClick={handleLogout} className="text-neutral-400 hover:text-white transition-colors" aria-label="Log out">
                 <LogOut className="w-4 h-4" />

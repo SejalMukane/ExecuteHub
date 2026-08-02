@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Mail, Calendar, Save, ArrowLeft, Loader2, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
+import { User, Mail, Calendar, Save, ArrowLeft, Loader2, CheckCircle2, AlertCircle, KeyRound, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import BackgroundBlobs from "@/components/BackgroundBlobs";
+import { AVATAR_STYLES, avatarUrl, getInitials, readAvatarStyle, saveAvatarStyle } from "@/lib/avatar";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [avatarStyle, setAvatarStyle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -28,11 +30,22 @@ export default function ProfilePage() {
       } else {
         setName(user?.name ?? "");
         setEmail(user?.email ?? "");
+        setAvatarStyle(readAvatarStyle());
         setReady(true);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, token, router]);
+
+  const selectAvatar = (style: string) => {
+    setAvatarStyle(style);
+    saveAvatarStyle(style);
+  };
+
+  const removeAvatar = () => {
+    setAvatarStyle(null);
+    saveAvatarStyle(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,13 +130,92 @@ export default function ProfilePage() {
 
           {/* Profile header */}
           <div className="flex items-center gap-5 mb-10">
-            <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center border border-neutral-800">
-              <User className="w-6 h-6 text-neutral-400" />
-            </div>
+            {avatarStyle ? (
+              <img
+                src={avatarUrl(avatarStyle, user?.email ?? user?.name ?? "user")}
+                alt="Profile avatar"
+                className="w-14 h-14 rounded-full border border-neutral-800 object-cover"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center border border-neutral-800">
+                {getInitials(user?.name ?? "") ? (
+                  <span className="text-sm font-semibold text-neutral-300">{getInitials(user?.name ?? "")}</span>
+                ) : (
+                  <User className="w-6 h-6 text-neutral-400" />
+                )}
+              </div>
+            )}
             <div>
               <h1 className="text-xl font-bold tracking-tight">{user?.name}</h1>
               <p className="text-sm text-neutral-400">{user?.email}</p>
             </div>
+          </div>
+
+          {/* Profile photo */}
+          <div className="rounded-xl glass-panel p-6 mb-6">
+            <h2 className="text-sm font-semibold mb-1">Profile Photo</h2>
+            <p className="text-xs text-neutral-500 mb-5">Pick an avatar style — it will be shown across your workspace.</p>
+
+            <div className="flex items-center gap-5">
+              <div className="w-20 h-20 rounded-full bg-neutral-900 flex items-center justify-center border border-neutral-800 shrink-0 overflow-hidden">
+                {avatarStyle ? (
+                  <img
+                    src={avatarUrl(avatarStyle, user?.email ?? user?.name ?? "user")}
+                    alt="Profile avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : getInitials(user?.name ?? "") ? (
+                  <span className="text-xl font-semibold text-neutral-300">{getInitials(user?.name ?? "")}</span>
+                ) : (
+                  <User className="w-8 h-8 text-neutral-400" />
+                )}
+              </div>
+              <div className="text-xs text-neutral-400">
+                {avatarStyle ? (
+                  <span>
+                    Using <span className="text-white font-medium">{AVATAR_STYLES.find((s) => s.id === avatarStyle)?.label}</span>
+                  </span>
+                ) : (
+                  <span>No custom avatar yet</span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-5 gap-3">
+              {AVATAR_STYLES.map((style) => {
+                const selected = avatarStyle === style.id;
+                return (
+                  <button
+                    key={style.id}
+                    type="button"
+                    onClick={() => selectAvatar(style.id)}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
+                      selected ? "bg-white/10 ring-1 ring-white/40" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <img
+                      src={avatarUrl(style.id, user?.email ?? user?.name ?? "user")}
+                      alt={style.label}
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                    <span className={`text-[10px] leading-none ${selected ? "text-white" : "text-neutral-400"}`}>
+                      {style.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {avatarStyle && (
+              <button
+                type="button"
+                onClick={removeAvatar}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-red-400 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Remove photo
+              </button>
+            )}
           </div>
 
           {/* Feedback */}
