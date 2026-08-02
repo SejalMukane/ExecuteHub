@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { api, BrowserImage, BrowserSession, Project } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function formatElapsed(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -229,7 +230,7 @@ export default function DashboardPage() {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.02]"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0)`,
           backgroundSize: "40px 40px",
         }}
       />
@@ -243,6 +244,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-4">
               <Bell className="w-4 h-4 text-neutral-500" />
+              <ThemeToggle />
               <span className="text-xs text-neutral-500 hidden sm:block">{user?.email}</span>
               <button onClick={handleLogout} className="text-neutral-400 hover:text-white transition-colors" aria-label="Log out">
                 <LogOut className="w-4 h-4" />

@@ -1,21 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root,
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --dot: #ffffff;
+}
+
+.light {
+  --background: #f7f0e3;
+  --foreground: #3e2f1f;
+  --dot: #6f4e37;
+}
+
+/*
+ * Dark theme is the current black palette (kept exactly as-is).
+ * Light theme maps the same utility classes onto a warm beige + brown palette
+ * by overriding Tailwind's theme CSS variables under `.light`.
+ */
+.light {
+  --color-black: #f7f0e3;
+  --color-white: #3e2f1f;
+
+  --color-neutral-100: #6f4e37;
+  --color-neutral-200: #2f2416;
+  --color-neutral-300: #46341f;
+  --color-neutral-400: #6b5a42;
+  --color-neutral-500: #8a7658;
+  --color-neutral-600: #a49474;
+  --color-neutral-700: #c2b395;
+  --color-neutral-800: #e6dac2;
+  --color-neutral-900: #efe6d2;
+  --color-neutral-950: #fdf8ee;
+
+  --color-emerald-400: #047857;
+  --color-emerald-500: #10b981;
+  --color-blue-400: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-amber-500: #f59e0b;
+  --color-red-400: #dc2626;
+  --color-red-500: #ef4444;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-plus-jakarta-sans);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Lock, Globe, LayoutDashboard, User } from 'lucide-react';
+import ThemeToggle from "@/components/ThemeToggle";
 
 const features = [
   {
@@ -33,7 +34,7 @@ export default function LandingPage() {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0)`,
           backgroundSize: "40px 40px",
         }}
       />
@@ -47,6 +48,7 @@ export default function LandingPage() {
         <header className="h-16 sticky top-0 z-50 flex justify-between items-center border-b border-neutral-900 bg-black/80 backdrop-blur-md">
           <span className="font-bold tracking-tight text-base">ExecuteHub</span>
           <div className="flex items-center gap-6">
+            <ThemeToggle />
             <Link href="/login" className="text-sm text-neutral-400 hover:text-white transition-colors">
               Sign in
             </Link>

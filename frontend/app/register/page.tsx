@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function RegisterPage() {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.03]"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0)`,
           backgroundSize: "40px 40px",
         }}
       />
@@ -51,10 +52,11 @@ export default function RegisterPage() {
 
       <div className="relative z-10 flex-1 flex flex-col">
         {/* Header */}
-        <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center border-b border-neutral-900">
+        <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center justify-between border-b border-neutral-900">
           <Link href="/" className="font-bold tracking-tight text-base hover:text-neutral-300 transition-colors">
             ExecuteHub
           </Link>
+          <ThemeToggle />
         </header>
 
         {/* Register form */}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { User, Mail, Calendar, Save, ArrowLeft, Loader2, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function ProfilePage() {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.02]"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0)`,
           backgroundSize: "40px 40px",
         }}
       />
@@ -100,6 +101,7 @@ export default function ProfilePage() {
                 <span className="text-white font-medium">Profile</span>
               </nav>
             </div>
+            <ThemeToggle />
           </div>
         </header>
 
