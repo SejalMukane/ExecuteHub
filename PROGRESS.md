@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 2 August 2026 (Week 4 complete)
+**Last updated:** 2 August 2026 (Week 5 in progress — distributed execution)
 ---
 
 ## Project Overview
@@ -459,6 +459,21 @@ ruby bin\rails runner script/smoke_execution.rb
 # 4. Run specs
 bundle exec rspec   # 118 examples, 0 failures
 ```
+
+---
+
+## Week 5 — Distributed Execution Platform
+
+**Status:** 🔄 In progress
+
+**Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
+
+### Part 1 — Multiple Concurrent Workers ✅
+
+- Sidekiq runs `:concurrency: 5` worker threads (`config/sidekiq.yml`), each mapping 1:1 to a logical worker (Worker-01..Worker-05).
+- `config/executehub.yml` gains `worker_pool_size`, `heartbeat_interval_seconds`, `heartbeat_stale_seconds`, `max_job_retries`, `retry_delay_seconds`, `worker_execution_timeout_seconds`.
+- `TestRunProgressUpdater` now marks a run `running` as soon as any job leaves the queue (previously it stayed `queued` until a job was actively running).
+- `spec/workers/multiple_workers_spec.rb` proves N jobs from the same run execute simultaneously (max concurrent overlap > 1) and never block each other.
 
 ---
 

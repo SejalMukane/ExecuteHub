@@ -31,7 +31,8 @@ RSpec.describe TestRunProgressUpdater, type: :service do
         expect(test_run.completed_jobs).to eq(1)
         expect(test_run.queued_jobs).to eq(1)
         expect(test_run.progress_percentage).to eq(50.0)
-        expect(test_run.status).to eq("queued")
+        # A run with in-flight work is "running" even if some jobs are still queued.
+        expect(test_run.status).to eq("running")
       end
     end
 

@@ -47,11 +47,18 @@ class TestRunProgressUpdater
   private
 
   # Runs the TestRun to completion only when every Job is in a terminal state.
-  # Jobs that are still uploading artifacts keep the run active.
+  # Jobs that are still running/uploading/retrying keep the run active.
+  #
+  # The run moves from queued -> running as soon as ANY job leaves the queue
+  # (started or already finished but the run is not done yet), so a run that is
+  # being processed by multiple concurrent workers is always reported as
+  # "running" rather than "queued".
   def transition_status(queued:, running:, retrying:, uploading:, failed:)
-    if queued.zero? && running.zero? && retrying.zero? && uploading.zero? && @test_run.jobs.count.positive?
+    active = running + retrying + uploading
+
+    if queued.zero? && active.zero? && @test_run.jobs.count.positive?
       @test_run.update!(status: failed.positive? ? :failed : :completed, finished_at: Time.current)
-    elsif @test_run.queued? && (running.positive? || uploading.positive?)
+    elsif @test_run.queued? && (active.positive? || @test_run.completed_jobs.positive?)
       @test_run.update!(status: :running)
     end
   end

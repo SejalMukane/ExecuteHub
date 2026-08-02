@@ -1,3 +1,7 @@
+# :concurrency is the number of worker THREADS this Sidekiq process runs.
+# Each thread maps 1:1 to a logical worker (Worker-01..Worker-N) registered by
+# WorkerRegistry, so multiple jobs from the same TestRun execute simultaneously.
+# Keep this in sync with `worker_pool_size` in config/executehub.yml.
 :concurrency: 5
 :pidfile: tmp/pids/sidekiq.pid
 :logfile: log/sidekiq.log

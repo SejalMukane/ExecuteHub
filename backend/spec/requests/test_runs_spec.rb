@@ -156,7 +156,7 @@ RSpec.describe "TestRuns API", type: :request do
 
       body = JSON.parse(response.body)["test_run"]
       expect(body["id"]).to eq(run.id)
-      expect(body["status"]).to eq("queued")
+      expect(body["status"]).to eq("running")
       expect(body["total_jobs"]).to eq(2)
       expect(body["completed_jobs"]).to eq(1)
       expect(body["progress_percentage"]).to eq(50.0)

@@ -4,6 +4,20 @@
 defaults: &defaults
   # Number of tests bundled into a single Job chunk when a TestRun is scheduled.
   chunk_size: 20
+  # Number of logical workers in the pool. MUST match Sidekiq's concurrency
+  # (config/sidekiq.yml :concurrency) so every worker thread maps 1:1 to a
+  # logical worker and multiple jobs from the same TestRun run simultaneously.
+  worker_pool_size: 5
+  # Seconds between HeartbeatWorker passes (each worker reports a heartbeat).
+  heartbeat_interval_seconds: 5
+  # A worker is marked Offline when its last heartbeat is older than this.
+  heartbeat_stale_seconds: 15
+  # Maximum automatic retries per job (Docker failure / worker crash / network).
+  max_job_retries: 3
+  # Delay before a retried job is re-enqueued (gives infra time to recover).
+  retry_delay_seconds: 5
+  # Hard ceiling for a single job's container execution before it is killed.
+  worker_execution_timeout_seconds: 600
   # Simulated processing time (seconds) used by TestExecutionWorker before
   # marking a job as complete. No real browser execution happens yet.
   worker_simulate_delay: 1
