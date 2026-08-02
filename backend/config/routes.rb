@@ -21,7 +21,12 @@ Rails.application.routes.draw do
         collection do
           get "suites", to: "test_runs#suites"
         end
+        member do
+          get "progress", to: "test_runs#progress"
+        end
       end
+
+      resources :workers, only: [:index, :show]
 
       resources :jobs, only: [:show] do
         member do

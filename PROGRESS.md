@@ -468,6 +468,14 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 10 — Distributed Execution APIs ✅
+
+- `GET /api/v1/workers` — pool summary (`counts`: total/idle/busy/offline) + every worker (name, status, heartbeat, cpu/memory, execution_count, current job when busy).
+- `GET /api/v1/workers/:id` — single worker, 404 for unknown.
+- `GET /api/v1/test_runs/:id/progress` — live `progress_snapshot` (queued/running/completed/failed jobs, tests, screenshots/videos, duration, progress %).
+- New `WorkersController` (authenticated, read-only); TestRunsController gains `progress` action; routes updated.
+- Specs: `workers_spec.rb` (5), `test_runs_spec.rb` progress endpoint (3).
+
 ### Part 9 — Test Run Progress ✅
 
 - New `running_jobs` column on `test_runs` (migration `20260802040000`). `TestRunProgressUpdater` now persists live buckets that partition the run's jobs: `queued_jobs` = queued + retrying, `running_jobs` = running + uploading_artifacts, `completed_jobs`, `failed_jobs` (sum = total_jobs), plus `progress_percentage`.

@@ -177,4 +177,38 @@ RSpec.describe "TestRuns API", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "GET /api/v1/test_runs/:id/progress" do
+    it "returns the live progress snapshot" do
+      run = create(:test_run, project: project, total_tests: 40)
+      create(:job, test_run: run, status: :running)
+      create(:job, test_run: run, status: :queued)
+      create(:job, test_run: run, status: :completed)
+      TestRunProgressUpdater.call(run)
+
+      get "/api/v1/test_runs/#{run.id}/progress", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)["test_run"]
+      expect(body["id"]).to eq(run.id)
+      expect(body["total_jobs"]).to eq(3)
+      expect(body["queued_jobs"]).to eq(1)
+      expect(body["running_jobs"]).to eq(1)
+      expect(body["completed_jobs"]).to eq(1)
+      expect(body["progress_percentage"]).to eq(33.3)
+    end
+
+    it "returns 404 for a run the user cannot access" do
+      run = create(:test_run, project: create(:project))
+
+      get "/api/v1/test_runs/#{run.id}/progress", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "requires authentication" do
+      get "/api/v1/test_runs/1/progress"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

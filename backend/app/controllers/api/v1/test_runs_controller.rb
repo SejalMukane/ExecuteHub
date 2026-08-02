@@ -4,7 +4,7 @@ module Api
       include Authenticatable
 
       before_action :set_project, only: [:create]
-      before_action :set_test_run, only: [:show]
+      before_action :set_test_run, only: [:show, :progress]
       before_action :authorize_write, only: [:create]
 
       # GET /api/v1/test_runs — newest first.
@@ -16,6 +16,12 @@ module Api
       # GET /api/v1/test_runs/:id — includes the run's jobs and progress.
       def show
         render json: { test_run: test_run_response(@test_run, include_jobs: true) }
+      end
+
+      # GET /api/v1/test_runs/:id/progress — live counters for the dashboard
+      # (queued/running/completed/failed jobs + progress). Cheap: no job rows.
+      def progress
+        render json: { test_run: @test_run.progress_snapshot }
       end
 
       # POST /api/v1/projects/:project_id/test_runs
