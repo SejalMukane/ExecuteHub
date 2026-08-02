@@ -8,7 +8,10 @@
 class TestExecutionWorker
   include Sidekiq::Worker
 
-  sidekiq_options queue: "test_execution", retry: 3, backtrace: true
+  # Automatic retries are handled by JobRetrier (max 3, only for infra failures)
+  # so retry_count + retry history are persisted. Sidekiq's own retry is
+  # disabled to avoid unrecorded re-runs.
+  sidekiq_options queue: "test_execution", retry: false, backtrace: true
 
   def perform(job_id)
     job = Job.find_by(id: job_id)

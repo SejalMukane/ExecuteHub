@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -115,12 +115,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010000) do
     t.index ["slug"], name: "index_github_webhooks_on_slug", unique: true
   end
 
+  create_table "job_retries", force: :cascade do |t|
+    t.integer "attempt", null: false
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.bigint "job_id", null: false
+    t.string "reason", null: false
+    t.datetime "retried_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id", "attempt"], name: "index_job_retries_on_job_id_and_attempt"
+    t.index ["job_id"], name: "index_job_retries_on_job_id"
+  end
+
   create_table "jobs", force: :cascade do |t|
     t.integer "chunk_number", default: 1, null: false
     t.string "container_id"
     t.datetime "created_at", null: false
     t.integer "duration_ms"
     t.text "error_message"
+    t.string "error_type"
     t.integer "failed_tests", default: 0, null: false
     t.datetime "finished_at"
     t.integer "passed_tests", default: 0, null: false
@@ -132,6 +145,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010000) do
     t.datetime "updated_at", null: false
     t.string "worker_id"
     t.index ["container_id"], name: "index_jobs_on_container_id"
+    t.index ["error_type"], name: "index_jobs_on_error_type"
     t.index ["status"], name: "index_jobs_on_status"
     t.index ["test_run_id", "chunk_number"], name: "index_jobs_on_test_run_id_and_chunk_number", unique: true
     t.index ["test_run_id"], name: "index_jobs_on_test_run_id"
@@ -211,6 +225,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010000) do
   add_foreign_key "github_repositories", "projects"
   add_foreign_key "github_webhook_deliveries", "github_webhooks"
   add_foreign_key "github_webhooks", "github_repositories"
+  add_foreign_key "job_retries", "jobs"
   add_foreign_key "jobs", "test_runs"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users"

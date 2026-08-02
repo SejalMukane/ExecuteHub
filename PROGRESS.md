@@ -468,6 +468,17 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 4 — Retry Mechanism ✅
+
+- New `app/services/job_failure_classifier.rb` — labels failures with a reason and retryability:
+  - Retryable: `docker_failure`, `worker_crash`, `network_timeout`
+  - NOT retryable: `test_failure`, `execution_timeout`, `application_error`
+- New `app/services/job_retrier.rb` — retries up to `max_job_retries` (default 3): records a `JobRetry` history row, bumps `retry_count` via `mark_retrying!`, re-enqueues via `TestExecutionWorker.perform_in(retry_delay)`. On exhaustion or non-retryable error it permanently fails the job with `error_type` + `error_message`.
+- New `job_retries` table (`attempt`, `reason`, `error_message`, `retried_at`); `jobs.error_type` column.
+- `TestExecutionWorker` switches `retry: false` — Sidekiq's silent retry is replaced by our DB-tracked retry.
+- `Job#record_retry!` / `JobRetry` model.
+- Specs: `job_failure_classifier_spec.rb` (9) + `job_retrier_spec.rb` (11).
+
 ### Part 3 — Fan-In Result Aggregator ✅
 
 - New `app/services/result_aggregator.rb`: waits until every Job of a TestRun is terminal, then aggregates results → updates the TestRun → generates the final summary (passed/failed tests, total duration, screenshots, videos, overall status). Idempotent + `with_lock` for the last-two-jobs race.

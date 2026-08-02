@@ -3,6 +3,7 @@ class Job < ApplicationRecord
 
   has_many :execution_logs, dependent: :destroy
   has_many :artifacts, dependent: :destroy
+  has_many :job_retries, dependent: :destroy
 
   enum :status, {
     queued: "queued",
@@ -47,6 +48,23 @@ class Job < ApplicationRecord
   # Record that a worker retried this job.
   def mark_retrying!
     update!(status: :retrying, retry_count: retry_count + 1)
+  end
+
+  # Append a retry to the retry history and flip the job back to :retrying.
+  # retry_count is bumped by mark_retrying!.
+  def record_retry!(reason:, error_message: nil)
+    job_retries.create!(
+      attempt: retry_count + 1,
+      reason: reason,
+      error_message: error_message,
+      retried_at: Time.current
+    )
+    mark_retrying!
+  end
+
+  # A job that has been retried before (its retry history is non-empty).
+  def retried?
+    retry_count.positive?
   end
 
   # Wall-clock execution duration in seconds (started -> finished).
