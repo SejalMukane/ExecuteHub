@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -217,6 +217,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_020000) do
     t.index ["team_id"], name: "index_users_on_team_id"
   end
 
+  create_table "worker_heartbeats", force: :cascade do |t|
+    t.float "cpu_usage"
+    t.datetime "created_at", null: false
+    t.bigint "current_job_id"
+    t.integer "execution_count", default: 0, null: false
+    t.datetime "last_seen_at"
+    t.float "memory_usage"
+    t.string "status", default: "idle", null: false
+    t.datetime "updated_at", null: false
+    t.string "worker_name", null: false
+    t.index ["last_seen_at"], name: "index_worker_heartbeats_on_last_seen_at"
+    t.index ["status"], name: "index_worker_heartbeats_on_status"
+    t.index ["worker_name"], name: "index_worker_heartbeats_on_worker_name", unique: true
+  end
+
   add_foreign_key "artifacts", "jobs"
   add_foreign_key "browser_sessions", "users"
   add_foreign_key "execution_logs", "jobs"
@@ -232,4 +247,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_020000) do
   add_foreign_key "test_runs", "projects"
   add_foreign_key "test_runs", "test_suites"
   add_foreign_key "users", "teams"
+  add_foreign_key "worker_heartbeats", "jobs", column: "current_job_id"
 end

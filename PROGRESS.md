@@ -468,6 +468,13 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 6 — Worker Heartbeats ✅
+
+- New `WorkerHeartbeat` model (`worker_heartbeats` table): worker_name (unique, `Worker-01` format), status (idle/busy/offline), last_seen_at, current_job_id (FK), cpu_usage, memory_usage (placeholders), execution_count. Scopes: active/available/busy/offline/stale + `healthy?`.
+- New `HeartbeatService` — `beat` upserts a worker's heartbeat (refreshes last_seen_at, preserves status); `mark_stale_workers_offline!` flips any worker older than `heartbeat_stale_seconds` (15) to Offline and returns the count.
+- New `HeartbeatWorker` (Sidekiq) — the pool's heartbeat driver, self-reschedules every `heartbeat_interval_seconds` (5s), ensures the pool exists, beats healthy workers, marks stale ones offline. Redis SETNX lock prevents concurrent passes.
+- Specs: `worker_heartbeat_spec.rb` (13), `heartbeat_service_spec.rb` (5), `heartbeat_worker_spec.rb` (5).
+
 ### Part 5 — Failure Handling ✅
 
 - `WorkerExecutor` routes every execution failure through `JobRetrier`: infra failures (Docker, network) retry, app/test failures fail permanently.
