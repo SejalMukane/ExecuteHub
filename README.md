@@ -68,7 +68,7 @@ executehub/
 
 Detailed setup instructions are in `PROGRESS.md` (How to Run section).
 
-1. Start PostgreSQL: `docker start executehub-postgres`
+1. Start PostgreSQL: `docker start browsercloud-postgres`
 2. Start backend (from `backend/`): `ruby bin\rails server -p 3001`
 3. Start frontend (from `frontend/`): `npm run dev`
 4. Open `http://localhost:3000` → register → dashboard.

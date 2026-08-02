@@ -482,8 +482,8 @@ bundle exec rspec   # 118 examples, 0 failures
 docker exec -e PGPASSWORD=executehub_dev -it executehub-postgres psql -U executehub -d executehub_development
 
 # Stop / start container
-docker stop executehub-postgres
-docker start executehub-postgres
+docker stop browsercloud-postgres
+docker start browsercloud-postgres
 ```
 
 ### Environment Variable Overrides (database.yml)
@@ -494,19 +494,29 @@ docker start executehub-postgres
 
 ## How to Run
 
-```powershell
-# 1. Start PostgreSQL (Docker Desktop must be running)
-docker start executehub-postgres
+> Implementation is in progress — these commands start the full dev stack with everything implemented so far (Week 4 complete). Docker Desktop must be running for PostgreSQL and real browser execution.
 
-# 2. Start backend (from backend/)
+```powershell
+# 1. Docker Desktop must be running, then start PostgreSQL (port 5434)
+docker start browsercloud-postgres
+
+# 2. Start backend (from backend/) — Ruby on PATH first
 $env:Path += ";C:\Ruby33-x64\bin"
 ruby bin\rails server -p 3001
 
-# 3. Start frontend (from frontend/)
+# 3. Start Sidekiq worker (processes test-run jobs) — separate window, from backend/
+#    IMPORTANT: restart Sidekiq after any worker code change (it does not reload code in dev)
+bundle exec sidekiq -C config\sidekiq.yml
+
+# 4. Start frontend (from frontend/)
 npm run dev
 ```
 
 Open `http://localhost:3000` → register → dashboard.
+
+> - **Redis** must be available for Sidekiq (default `redis://localhost:6379/0`).
+> - **GitHub env vars** (`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`/`GITHUB_WEBHOOK_URL`, …) are only needed to test OAuth/webhooks — set them in the backend window before `rails server` (see GitHub Setup section above). Not required to start the app.
+> - Real test runs additionally need Docker Desktop + the built image: `docker build -f Dockerfile.playwright -t executehub-playwright:latest .`
 
 ---
 
