@@ -14,27 +14,49 @@ class HeartbeatWorker
   LOCK_KEY = "executehub:heartbeat_lock".freeze
 
   def perform
+    # Schedule the next pass FIRST so the chain survives every run — including
+    # passes that skip the lock because another pass is mid-flight.
+    schedule_next_pass
+
     return unless acquire_lock
 
     begin
       ensure_pool
+      LoadBalancer.recover_orphans!
+      revive_offline_workers
       beat_all_workers
       offline = HeartbeatService.mark_stale_workers_offline!
       Rails.logger.info("[HeartbeatWorker] Pass complete (#{offline} workers went offline)")
     ensure
       release_lock
-      HeartbeatWorker.perform_in(HeartbeatService.interval_seconds)
     end
   end
 
   private
 
+  def schedule_next_pass
+    HeartbeatWorker.perform_in(HeartbeatService.interval_seconds)
+  end
+
   # Register Worker-01..Worker-N so the pool always matches the configured size.
   def ensure_pool
-    pool_size = Rails.configuration.executehub.fetch("worker_pool_size", 5).to_i
     pool_size.times do |i|
       WorkerHeartbeat.find_or_create_by!(worker_name: format("Worker-%02d", i + 1))
     end
+  end
+
+  # Re-register any Offline pool worker back to Idle so the pool self-heals
+  # after a restart or a stale blip. Orphans are recovered first so revival
+  # never abandons a Job that was still in flight on the dead worker.
+  def revive_offline_workers
+    pool_size.times do |i|
+      name = format("Worker-%02d", i + 1)
+      WorkerRegistry.register!(name) if WorkerRegistry.offline?(name)
+    end
+  end
+
+  def pool_size
+    Rails.configuration.executehub.fetch("worker_pool_size", 5).to_i
   end
 
   # Refresh every healthy (non-offline + not yet stale) worker's last_seen_at,

@@ -468,6 +468,22 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Hotfix — Worker pool stalled on boot 🔧
+
+**Symptom:** after starting the stack, a TestRun stayed at `queued` forever — jobs were pulled off Redis, requeued into `schedule`, and never processed.
+
+**Root causes:**
+- `connection_pool 3.0.2` crashed Sidekiq 7.3.9's **scheduled poller** (`TimedStack#pop` `ArgumentError` in `sidekiq/scheduled.rb`) — so `perform_in` scheduling (retries, requeues, heartbeat self-reschedule) silently stopped firing.
+- `HeartbeatWorker` had **no bootstrap** — nothing enqueued its first pass, so the worker pool was never populated and `claim_available!` always returned `nil`, requeueing every job.
+- HeartbeatWorker's self-reschedule sat inside the lock-protected `ensure`, so a lock-skipped pass broke the chain.
+
+**Fixes:**
+- Pinned `connection_pool` to `>= 2.3.0, < 3` (Sidekiq 7.3.x predates the 3.x API change).
+- New `config/initializers/heartbeat_worker.rb` — `Sidekiq.configure_server` `on(:startup)` enqueues the first heartbeat pass.
+- `HeartbeatWorker#perform` now schedules the next pass **first** (chain survives lock skips) and **self-heals the pool**: recovers orphaned jobs of offline workers (`LoadBalancer.recover_orphans!`) and revives offline pool workers back to Idle (`WorkerRegistry.register!`) every pass.
+- Verified live: run #28 resumed and completed 43/43; Worker-05 (previously stuck Offline) revived to Idle; no scheduler crash; `schedule` drained.
+- Specs: heartbeat bootstrap + revival + orphan-recovery added (233 examples green).
+
 ### Part 14 — Test Coverage Sweep ✅
 
 - Final RSpec sweep across the whole distributed execution stack — every risk area has a dedicated spec file that pins the behaviour:

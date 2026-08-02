@@ -18,6 +18,10 @@ gem "jwt"
 # Redis + Sidekiq for background job processing (test_execution queue)
 gem "redis", "~> 5.0"
 gem "sidekiq", "~> 7.3"
+# Sidekiq 7.3.x predates connection_pool 3.x — the 3.x TimedStack#pop signature
+# change crashes Sidekiq's scheduled poller (and with it perform_in scheduling,
+# job retries/requeues and the HeartbeatWorker self-reschedule). Cap it below 3.
+gem "connection_pool", ">= 2.3.0", "< 3"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
