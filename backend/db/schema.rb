@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -161,15 +161,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_000003) do
     t.integer "completed_jobs", default: 0, null: false
     t.datetime "created_at", null: false
     t.integer "failed_jobs", default: 0, null: false
+    t.integer "failed_tests", default: 0, null: false
     t.datetime "finished_at"
+    t.integer "passed_tests", default: 0, null: false
     t.float "progress_percentage", default: 0.0, null: false
     t.bigint "project_id", null: false
     t.integer "queued_jobs", default: 0, null: false
     t.datetime "started_at"
     t.string "status", default: "queued", null: false
     t.bigint "test_suite_id"
+    t.bigint "total_duration_ms"
     t.integer "total_jobs", default: 0, null: false
+    t.integer "total_screenshots", default: 0, null: false
     t.integer "total_tests", default: 0, null: false
+    t.integer "total_videos", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["project_id", "created_at"], name: "index_test_runs_on_project_id_and_created_at"
     t.index ["project_id"], name: "index_test_runs_on_project_id"

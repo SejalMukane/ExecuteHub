@@ -1,12 +1,16 @@
 # TestRunProgressUpdater recomputes a TestRun's counters and progress from the
 # current state of its Jobs and moves the TestRun through its lifecycle
-# (queued -> running -> completed/failed).
+# (queued -> running). Terminal transitions (completed/failed) and the final
+# execution summary are delegated to ResultAggregator, which only fires once
+# every Job is in a terminal state.
 #
 #   progress_percentage = completed_jobs / total_jobs * 100
 #
 # Recomputing from the database (instead of incrementing) keeps the numbers
 # consistent even when multiple Jobs finish concurrently.
 class TestRunProgressUpdater
+  TERMINAL_STATUSES = %w[completed failed].freeze
+
   def self.call(test_run)
     new(test_run).call
   end
@@ -35,8 +39,10 @@ class TestRunProgressUpdater
       progress_percentage: progress
     )
 
-    transition_status(queued: queued, running: running, retrying: retrying,
-                      uploading: uploading, failed: failed)
+    transition_status(queued: queued, running: running, retrying: retrying, uploading: uploading)
+
+    # Fan-in: once every job is terminal, aggregate the final summary.
+    ResultAggregator.call(@test_run)
 
     Rails.logger.info(
       "[TestRunProgressUpdater] Progress Updated for TestRun ##{@test_run.id}: #{progress}% (#{completed}/#{total} jobs)"
@@ -46,20 +52,14 @@ class TestRunProgressUpdater
 
   private
 
-  # Runs the TestRun to completion only when every Job is in a terminal state.
-  # Jobs that are still running/uploading/retrying keep the run active.
-  #
-  # The run moves from queued -> running as soon as ANY job leaves the queue
-  # (started or already finished but the run is not done yet), so a run that is
-  # being processed by multiple concurrent workers is always reported as
-  # "running" rather than "queued".
-  def transition_status(queued:, running:, retrying:, uploading:, failed:)
-    active = running + retrying + uploading
+  # A run becomes "running" as soon as ANY job leaves the queue (started or
+  # already finished but the run is not done yet). Terminal state is left to
+  # ResultAggregator.
+  def transition_status(queued:, running:, retrying:, uploading:)
+    return unless @test_run.queued?
+    return if @test_run.jobs.where.not(status: TERMINAL_STATUSES).none?
 
-    if queued.zero? && active.zero? && @test_run.jobs.count.positive?
-      @test_run.update!(status: failed.positive? ? :failed : :completed, finished_at: Time.current)
-    elsif @test_run.queued? && (active.positive? || @test_run.completed_jobs.positive?)
-      @test_run.update!(status: :running)
-    end
+    active = running + retrying + uploading
+    @test_run.update!(status: :running) if active.positive? || @test_run.completed_jobs.positive?
   end
 end

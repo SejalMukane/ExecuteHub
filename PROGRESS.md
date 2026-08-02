@@ -468,6 +468,14 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 3 — Fan-In Result Aggregator ✅
+
+- New `app/services/result_aggregator.rb`: waits until every Job of a TestRun is terminal, then aggregates results → updates the TestRun → generates the final summary (passed/failed tests, total duration, screenshots, videos, overall status). Idempotent + `with_lock` for the last-two-jobs race.
+- `test_runs` gains summary columns: `passed_tests`, `failed_tests`, `total_duration_ms`, `total_screenshots`, `total_videos`.
+- `TestRunProgressUpdater` now delegates terminal transitions to `ResultAggregator` (automatic fan-in on every job completion).
+- TestRuns API now serializes the summary fields.
+- `spec/services/result_aggregator_spec.rb` (9 examples): waits for all terminal, sums tests/duration, counts artifacts, completed vs failed, idempotency.
+
 ### Part 2 — Fan-Out Execution ✅
 
 - `TestScheduler` refactored into explicit steps: `create_jobs` (chunk + persist) → `dispatch_jobs` (push every Job into Redis immediately via `TestExecutionWorker.perform_async`).

@@ -16,6 +16,9 @@ class TestRun < ApplicationRecord
   validates :total_tests, presence: true,
             numericality: { only_integer: true, greater_than: 0 }
   validates :total_jobs, :completed_jobs, :failed_jobs, :queued_jobs,
+            :passed_tests, :failed_tests, :total_screenshots, :total_videos,
+            numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :total_duration_ms,
             numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :progress_percentage,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
