@@ -17,6 +17,7 @@ import {
 import DashboardShell from "@/components/DashboardShell";
 import StatusBadge, { StatusTone } from "@/components/StatusBadge";
 import { api, Worker, WorkerCounts, WorkerPoolResponse } from "@/lib/api";
+import { subscribeWorkers } from "@/lib/realtime";
 import { useAuth } from "@/context/AuthContext";
 
 const COUNT_CARDS: {
@@ -109,9 +110,17 @@ export default function WorkersPage() {
 
     load();
     const timer = setInterval(load, 5000);
+
+    // Realtime: heartbeats/offline/online arrive on the workers stream — refresh
+    // instantly instead of waiting for the next poll.
+    const unsubscribe = subscribeWorkers(token, () => {
+      if (!cancelled) void load();
+    });
+
     return () => {
       cancelled = true;
       clearInterval(timer);
+      unsubscribe();
     };
   }, [token]);
 
@@ -136,8 +145,13 @@ export default function WorkersPage() {
             every 5s; a worker silent for 15s is marked Offline.
           </p>
         </div>
-        <span className="text-xs text-neutral-500 flex items-center gap-1.5">
-          <RefreshCw className="w-3.5 h-3.5" /> Auto-refreshing every 5s
+        <span className="text-xs text-neutral-500 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Polls every 5s
+          </span>
         </span>
       </div>
 

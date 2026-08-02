@@ -18,6 +18,7 @@ import {
 import DashboardShell from "@/components/DashboardShell";
 import StatusBadge, { ProgressBar, StatusTone } from "@/components/StatusBadge";
 import { api, Job, TestRun, TestRunProgress } from "@/lib/api";
+import { subscribeTestRun, subscribeJobs } from "@/lib/realtime";
 import { useAuth } from "@/context/AuthContext";
 
 // Color code every chunk in the Test Matrix by its current state.
@@ -78,7 +79,7 @@ export default function TestRunDetailPage() {
     if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
 
-  // Jobs + run metadata refresh every 5s.
+  // Jobs + run metadata refresh every 5s (plus realtime job events).
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -94,14 +95,20 @@ export default function TestRunDetailPage() {
 
     load();
     const timer = setInterval(load, 5000);
+    const unsubscribe = subscribeJobs(token, () => {
+      if (!cancelled) void load();
+    });
+
     return () => {
       cancelled = true;
       clearInterval(timer);
+      unsubscribe();
     };
   }, [token, runId]);
 
   // Live counters refresh every 2s (cheap snapshot, no job rows) so the
   // distributed execution view stays current between job-list refreshes.
+  // Realtime progress snapshots refresh instantly instead.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -117,9 +124,14 @@ export default function TestRunDetailPage() {
 
     load();
     const timer = setInterval(load, 2000);
+    const unsubscribe = subscribeTestRun(token, runId, () => {
+      if (!cancelled) void load();
+    });
+
     return () => {
       cancelled = true;
       clearInterval(timer);
+      unsubscribe();
     };
   }, [token, runId]);
 

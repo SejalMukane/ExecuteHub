@@ -57,6 +57,7 @@ class WorkerExecutor
   def execute
     container = nil
     job.mark_running!
+    RealtimeBroadcaster.job_started(job)
     log(:info, "Starting execution for Job ##{job.id}")
 
     container = create_container
@@ -146,6 +147,7 @@ class WorkerExecutor
     end
 
     TestRunProgressUpdater.call(job.test_run)
+    RealtimeBroadcaster.job_finished(job)
   end
 
   def job_succeeded?
@@ -174,6 +176,9 @@ class WorkerExecutor
     log(:error, "Job failed: #{error.message}")
     JobRetrier.call(job, error)
     TestRunProgressUpdater.call(job.test_run)
+    # Only terminal failures broadcast "finished" — a retried job will start
+    # again (and broadcast job_started) once it is re-dispatched.
+    RealtimeBroadcaster.job_finished(job) if job.failed?
   end
 
   def persist_summary

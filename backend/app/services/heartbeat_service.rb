@@ -33,6 +33,7 @@ class HeartbeatService
       last_seen_at: Time.current
     )
     worker.save!
+    RealtimeBroadcaster.worker_heartbeat(worker)
     worker
   end
 
@@ -41,6 +42,7 @@ class HeartbeatService
     count = 0
     WorkerHeartbeat.active.stale.each do |worker|
       worker.mark_offline!
+      RealtimeBroadcaster.worker_offline(worker)
       count += 1
     end
     count

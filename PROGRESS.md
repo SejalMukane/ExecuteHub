@@ -468,6 +468,17 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 12 — ActionCable Realtime ✅
+
+- **Backend channels**: `ApplicationCable::Connection` (auth via `?token=` JWT — browsers can't set WS headers), `WorkersChannel` (`workers` stream), `TestRunsChannel` (`test_run_<id>`), `JobsChannel` (`jobs` + optional `job_<id>`).
+- **`RealtimeBroadcaster`** — the single source of broadcast decisions, failure-tolerant (a down cable server never breaks execution):
+  - `job_started` / `job_finished` → `jobs`, `job_<id>`, `test_run_<id>`
+  - `run_progress` → `test_run_<id>` (progress_snapshot)
+  - `worker_heartbeat` / `worker_offline` / `worker_online` → `workers`
+- Wired into the lifecycle: `WorkerExecutor` (started/finished — terminal failures only), `TestRunProgressUpdater` (progress), `HeartbeatService` (heartbeat/offline), `WorkerRegistry` (online).
+- **Frontend**: `@rails/actioncable` installed; `lib/realtime.ts` client (consumer per token, typed events, subscription cleanup) + `lib/actioncable.d.ts` types. Workers page and test-runs detail page subscribe and refresh instantly on events, with polling as fallback.
+- Specs: `realtime_broadcaster_spec.rb` (8), channel specs (4). Full suite 229 examples green; `tsc --noEmit` clean; `next build` passes.
+
 ### Part 11 — Distributed Execution Frontend ✅
 
 - **Worker Pool page** (`/workers`, nav item added): pool summary cards (total/idle/busy/offline) + color-coded Worker Health cards showing worker name, live status (idle=green, busy=yellow, offline=red), heartbeat age, CPU/memory usage bars (red >75%, amber >50%), execution count, and the running job (chunk, container ID, running time). Auto-refreshes every 5s (matches the heartbeat driver).

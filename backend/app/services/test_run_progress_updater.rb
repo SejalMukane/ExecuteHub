@@ -50,6 +50,8 @@ class TestRunProgressUpdater
     # Fan-in: once every job is terminal, aggregate the final summary.
     ResultAggregator.call(@test_run)
 
+    RealtimeBroadcaster.run_progress(@test_run)
+
     Rails.logger.info(
       "[TestRunProgressUpdater] Progress Updated for TestRun ##{@test_run.id}: #{progress}% (#{completed}/#{total} jobs)"
     )

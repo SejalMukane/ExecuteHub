@@ -28,6 +28,7 @@ class WorkerRegistry
         memory_usage: memory_usage
       )
       worker.save!
+      RealtimeBroadcaster.worker_online(worker)
       worker
     end
 
