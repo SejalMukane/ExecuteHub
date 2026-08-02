@@ -468,6 +468,12 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 7 — Worker Registry ✅
+
+- New `WorkerRegistry` service — the central registry of every logical worker: `register!` (upserts Idle + healthy, revives Offline workers), `claim_available!` (atomically claims one Idle worker via `FOR UPDATE SKIP LOCKED`), `claim!` (named claim, raises `WorkerUnavailableError` if Busy/Offline), `release!` (Busy → Idle, bumps execution_count), plus `available`, `offline?`, `counts` (total/idle/busy/offline) for dashboards.
+- Decoupled from Docker/Sidekiq — only reasons about `WorkerHeartbeat` records.
+- Specs: `spec/services/worker_registry_spec.rb` (17 examples).
+
 ### Part 6 — Worker Heartbeats ✅
 
 - New `WorkerHeartbeat` model (`worker_heartbeats` table): worker_name (unique, `Worker-01` format), status (idle/busy/offline), last_seen_at, current_job_id (FK), cpu_usage, memory_usage (placeholders), execution_count. Scopes: active/available/busy/offline/stale + `healthy?`.
