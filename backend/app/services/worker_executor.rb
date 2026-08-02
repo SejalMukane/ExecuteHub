@@ -56,7 +56,7 @@ class WorkerExecutor
 
   def execute
     container = nil
-    job.mark_running!
+    job.mark_running!(worker_name: worker&.worker_name)
     RealtimeBroadcaster.job_started(job)
     log(:info, "Starting execution for Job ##{job.id}")
 

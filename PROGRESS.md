@@ -468,6 +468,13 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 13 — DB Wiring ✅
+
+- **Automatic persistence trail**: one `WorkerExecutor` run now leaves a complete, queryable record without manual bookkeeping — job lifecycle (`running` → `uploading_artifacts` → `completed`/`failed`), timestamps, container id, execution logs (lifecycle + Playwright output), artifacts (with size/type), and the fan-in summary via `ResultAggregator`.
+- **Worker attribution**: `Job#mark_running!` now accepts `worker_name:`; `WorkerExecutor` records the claimed logical worker (e.g. `Worker-02`) in the job's `worker_id` (falls back to the process `worker_identity` when executed without a worker).
+- **Trail spec**: `execution_db_trail_spec.rb` drives the full path with a claimed worker and asserts logs, artifacts, worker attribution, lifecycle and that the worker stays Busy on the job.
+- Full suite: 230 examples, 0 failures.
+
 ### Part 12 — ActionCable Realtime ✅
 
 - **Backend channels**: `ApplicationCable::Connection` (auth via `?token=` JWT — browsers can't set WS headers), `WorkersChannel` (`workers` stream), `TestRunsChannel` (`test_run_<id>`), `JobsChannel` (`jobs` + optional `job_<id>`).

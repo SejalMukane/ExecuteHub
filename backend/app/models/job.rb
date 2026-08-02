@@ -25,9 +25,11 @@ class Job < ApplicationRecord
 
   scope :recent, -> { order(chunk_number: :asc) }
 
-  # Mark a job as picked up by a worker and begin execution.
-  def mark_running!
-    update!(status: :running, started_at: Time.current, worker_id: worker_identity)
+  # Mark a job as picked up by a worker and begin execution. The worker_id is
+  # the logical pool worker (e.g. "Worker-03") when one was claimed, falling
+  # back to the process identity for ad-hoc/direct executions.
+  def mark_running!(worker_name: nil)
+    update!(status: :running, started_at: Time.current, worker_id: worker_name || worker_identity)
   end
 
   # Mark a job as uploading its execution artifacts (between run + terminal).
