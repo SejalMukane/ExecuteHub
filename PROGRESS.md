@@ -468,6 +468,14 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 8 — Load Balancing ✅
+
+- New `LoadBalancer` service — the distributed traffic cop: `claim!` assigns a Job to the next available worker (atomic via registry), `requeue!` puts a Job back on the queue with backoff when the pool is saturated, `recover_orphans!` re-dispatches Jobs whose worker went Offline mid-run (routed through JobRetrier as `worker_crash`, retried up to the limit), `dispatch_queued!` sweeps any Job still sitting `queued`.
+- `TestExecutionWorker` now claims an available worker before executing and releases it in an `ensure`; when every worker is busy it requeues itself with a backoff instead of piling onto the pool. Jobs are only ever assigned to workers that are actually free.
+- `WorkerExecutor` accepts an optional `worker:` (used for log context only; direct calls without a worker still work).
+- Orphan recovery keeps the pool honest: a worker that stops heartbeating while running a Job goes Offline, and its Job is recovered instead of hanging forever.
+- Specs: `load_balancer_spec.rb` (13), updated `test_execution_worker_spec.rb` (5).
+
 ### Part 7 — Worker Registry ✅
 
 - New `WorkerRegistry` service — the central registry of every logical worker: `register!` (upserts Idle + healthy, revives Offline workers), `claim_available!` (atomically claims one Idle worker via `FOR UPDATE SKIP LOCKED`), `claim!` (named claim, raises `WorkerUnavailableError` if Busy/Offline), `release!` (Busy → Idle, bumps execution_count), plus `available`, `offline?`, `counts` (total/idle/busy/offline) for dashboards.

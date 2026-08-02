@@ -38,17 +38,18 @@ class WorkerExecutor
   # Raised when a Job's container runs longer than worker_execution_timeout_seconds.
   class ExecutionTimeoutError < StandardError; end
 
-  def self.execute(job)
-    new(job).execute
+  def self.execute(job, worker: nil)
+    new(job, worker: worker).execute
   end
 
-  attr_reader :job
+  attr_reader :job, :worker
 
-  def initialize(job, docker: DockerService.new, parser: PlaywrightOutputParser, artifact_store: ArtifactStore)
+  def initialize(job, docker: DockerService.new, parser: PlaywrightOutputParser, artifact_store: ArtifactStore, worker: nil)
     @job = job
     @docker = docker
     @parser = parser
     @artifact_store = artifact_store
+    @worker = worker
     @summary = nil
     @exit_code = nil
   end
@@ -211,9 +212,10 @@ class WorkerExecutor
     return if message.blank?
 
     ExecutionLog.create!(job: job, level: level, message: message)
-    Rails.logger.info("[WorkerExecutor] Job ##{job.id}: #{message}") if level == "info"
-    Rails.logger.warn("[WorkerExecutor] Job ##{job.id}: #{message}") if level == "warn"
-    Rails.logger.error("[WorkerExecutor] Job ##{job.id}: #{message}") if level == "error"
+    worker_label = worker ? " [#{worker.worker_name}]" : ""
+    Rails.logger.info("[WorkerExecutor] Job ##{job.id}#{worker_label}: #{message}") if level == "info"
+    Rails.logger.warn("[WorkerExecutor] Job ##{job.id}#{worker_label}: #{message}") if level == "warn"
+    Rails.logger.error("[WorkerExecutor] Job ##{job.id}#{worker_label}: #{message}") if level == "error"
   end
 
   # Removes ANSI colour/format escape codes so stored logs render cleanly.

@@ -3,6 +3,13 @@
 # Docker container and owns the Job's lifecycle (running -> uploading_artifacts
 # -> completed/failed).
 #
+# Load balancing (Part 8): before executing, the worker CLAIMS an available
+# logical worker from the registry. If every worker is busy the Job is
+# requeued with a small backoff instead of piling onto the pool — jobs are only
+# ever assigned to workers that are actually free. When execution finishes the
+# claimed worker is released back to Idle. Orphaned jobs (worker died mid-run)
+# are recovered separately by LoadBalancer.
+#
 # This worker contains no Docker or Playwright logic itself — WorkerExecutor
 # is kept Sidekiq-free and reusable, and this class is only the Sidekiq bridge.
 class TestExecutionWorker
@@ -20,8 +27,18 @@ class TestExecutionWorker
       return
     end
 
-    Rails.logger.info("[TestExecutionWorker] Executing Job ##{job.id}")
-    WorkerExecutor.execute(job)
+    worker = WorkerRegistry.claim_available!(job)
+    if worker.nil?
+      Rails.logger.warn("[TestExecutionWorker] No available worker — requeuing Job ##{job.id}")
+      return LoadBalancer.requeue!(job)
+    end
+
+    Rails.logger.info("[TestExecutionWorker] Executing Job ##{job.id} on #{worker.worker_name}")
+    begin
+      WorkerExecutor.execute(job, worker: worker)
+    ensure
+      WorkerRegistry.release!(worker)
+    end
   rescue StandardError => e
     # Safety net for failures that escape WorkerExecutor (e.g. DB down).
     Rails.logger.error("[TestExecutionWorker] Job ##{job_id} failed: #{e.message}")
