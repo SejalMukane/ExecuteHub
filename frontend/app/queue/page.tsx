@@ -104,7 +104,7 @@ export default function QueuePage() {
           return (
             <div
               key={card.key}
-              className={`p-6 rounded-xl border bg-neutral-950/50 ${TONE_CLASSES[card.tone]}`}
+              className={`p-6 rounded-xl glass-panel ${TONE_CLASSES[card.tone]}`}
             >
               <div className="flex items-center gap-3 mb-4">
                 <Icon className={`w-4 h-4 ${TEXT_CLASSES[card.tone]}`} />
@@ -118,7 +118,7 @@ export default function QueuePage() {
         })}
       </div>
 
-      <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+      <div className="rounded-xl glass-panel p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold">Throughput</h2>
           <span className="text-xs text-neutral-500">{total} jobs tracked</span>

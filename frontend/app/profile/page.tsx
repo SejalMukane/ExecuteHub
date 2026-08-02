@@ -7,6 +7,7 @@ import { User, Mail, Calendar, Save, ArrowLeft, Loader2, CheckCircle2, AlertCirc
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -89,9 +90,12 @@ export default function ProfilePage() {
         }}
       />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10">
         {/* Top nav */}
-        <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="h-16 glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
@@ -141,7 +145,7 @@ export default function ProfilePage() {
           )}
 
           {/* Profile form */}
-          <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+          <div className="rounded-xl glass-panel p-6">
             <h2 className="text-sm font-semibold mb-6">Account Information</h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -155,7 +159,7 @@ export default function ProfilePage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 />
               </div>
 
@@ -169,7 +173,7 @@ export default function ProfilePage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 />
               </div>
 
@@ -189,7 +193,7 @@ export default function ProfilePage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Leave blank to keep current"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                     />
                   </div>
                   <div>
@@ -202,7 +206,7 @@ export default function ProfilePage() {
                       value={passwordConfirmation}
                       onChange={(e) => setPasswordConfirmation(e.target.value)}
                       placeholder="Re-enter new password"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                     />
                   </div>
                 </div>
@@ -232,7 +236,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Account info */}
-          <div className="mt-6 rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+          <div className="mt-6 rounded-xl glass-panel p-6">
             <h2 className="text-sm font-semibold mb-4">Account Details</h2>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">

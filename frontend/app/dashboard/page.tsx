@@ -31,6 +31,7 @@ import {
 import { api, BrowserImage, BrowserSession, Project } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 function formatElapsed(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -235,9 +236,12 @@ export default function DashboardPage() {
         }}
       />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10 min-h-screen">
         {/* Top bar */}
-        <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="h-16 glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
@@ -305,7 +309,7 @@ export default function DashboardPage() {
               {summaryCards.map((stat) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.label} className="p-5 rounded-xl border border-neutral-900 bg-neutral-950/50">
+                  <div key={stat.label} className="p-5 rounded-xl glass-panel">
                     <div className="flex items-center gap-3 mb-3">
                       <Icon className="w-4 h-4 text-neutral-500" />
                       <span className="text-xs text-neutral-500 font-medium">{stat.label}</span>
@@ -318,7 +322,7 @@ export default function DashboardPage() {
 
             <div className="grid lg:grid-cols-3 gap-6 mb-10">
               {/* Live Test Runs */}
-              <div className="lg:col-span-2 rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+              <div className="lg:col-span-2 rounded-xl glass-panel overflow-hidden">
                 <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <Rocket className="w-4 h-4 text-neutral-500" />
@@ -366,17 +370,17 @@ export default function DashboardPage() {
               </div>
 
               {/* Queue Status */}
-              <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-5 flex flex-col">
+              <div className="rounded-xl glass-panel p-5 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-4">
                   <Timer className="w-4 h-4 text-neutral-500" />
                   <h2 className="text-sm font-semibold">Queue Status</h2>
                 </div>
                 <div className="flex-1 space-y-4">
-                  <div className="p-4 rounded-lg border border-neutral-900 bg-black/40">
+                  <div className="p-4 rounded-lg border border-neutral-900 bg-black/10">
                     <p className="text-2xl font-bold tracking-tight">{pendingJobs}</p>
                     <p className="text-xs text-neutral-500 mt-1">Jobs Waiting</p>
                   </div>
-                  <div className="p-4 rounded-lg border border-neutral-900 bg-black/40">
+                  <div className="p-4 rounded-lg border border-neutral-900 bg-black/10">
                     <p className="text-2xl font-bold tracking-tight">{avgWaitTime}s</p>
                     <p className="text-xs text-neutral-500 mt-1">Average Wait Time</p>
                   </div>
@@ -386,7 +390,7 @@ export default function DashboardPage() {
 
             <div className="grid lg:grid-cols-3 gap-6 mb-10">
               {/* Worker Pool */}
-              <div className="lg:col-span-2 rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+              <div className="lg:col-span-2 rounded-xl glass-panel overflow-hidden">
                 <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <Wrench className="w-4 h-4 text-neutral-500" />
@@ -426,14 +430,14 @@ export default function DashboardPage() {
               </div>
 
               {/* Infrastructure Health */}
-              <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-5 flex flex-col">
+              <div className="rounded-xl glass-panel p-5 flex flex-col">
                 <div className="flex items-center gap-2.5 mb-4">
                   <ShieldCheck className="w-4 h-4 text-neutral-500" />
                   <h2 className="text-sm font-semibold">Infrastructure Health</h2>
                 </div>
                 <div className="flex-1 space-y-2.5">
                   {infraHealth.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between px-4 py-3 rounded-lg border border-neutral-900 bg-black/40">
+                    <div key={item.name} className="flex items-center justify-between px-4 py-3 rounded-lg border border-neutral-900 bg-black/10">
                       <div className="flex items-center gap-3">
                         <Database className="w-3.5 h-3.5 text-neutral-500" />
                         <span className="text-sm text-neutral-300">{item.name}</span>
@@ -449,7 +453,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent Activity */}
-            <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden mb-10">
+            <div className="rounded-xl glass-panel overflow-hidden mb-10">
               <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <Activity className="w-4 h-4 text-neutral-500" />
@@ -517,7 +521,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+                <div className="rounded-xl glass-panel p-6">
                   <p className="text-xs text-neutral-500 mb-4">Choose a browser to launch</p>
                   <div className="grid sm:grid-cols-3 gap-3 mb-6">
                     {images.length === 0 && (
@@ -592,7 +596,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Session history */}
-            <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+            <div className="rounded-xl glass-panel overflow-hidden">
               <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                 <h2 className="text-sm font-semibold">Session History</h2>
                 <span className="text-xs text-neutral-500">{sessions.length} total</span>

@@ -103,7 +103,7 @@ export default function TestRunDetailPage() {
       )}
 
       {!run ? (
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 px-5 py-12 text-center">
+        <div className="rounded-xl glass-panel px-5 py-12 text-center">
           <p className="text-sm text-neutral-500">Test run not found.</p>
         </div>
       ) : (
@@ -143,7 +143,7 @@ export default function TestRunDetailPage() {
 
           {/* Progress + summary */}
           <div className="grid lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+            <div className="lg:col-span-2 rounded-xl glass-panel p-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Progress</p>
                 <span className="text-xs text-neutral-500">Auto-refreshing every 5s</span>
@@ -153,7 +153,7 @@ export default function TestRunDetailPage() {
                 {stats.map((stat) => {
                   const Icon = stat.icon;
                   return (
-                    <div key={stat.label} className="p-4 rounded-lg border border-neutral-900 bg-black/40">
+                    <div key={stat.label} className="p-4 rounded-lg border border-neutral-900 bg-black/10">
                       <div className="flex items-center gap-2 mb-2">
                         <Icon className="w-3.5 h-3.5 text-neutral-500" />
                         <span className="text-xs text-neutral-500 font-medium">{stat.label}</span>
@@ -165,7 +165,7 @@ export default function TestRunDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+            <div className="rounded-xl glass-panel p-6">
               <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-4">Run Information</p>
               <dl className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -209,7 +209,7 @@ export default function TestRunDetailPage() {
           </div>
 
           {/* Job list */}
-          <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+          <div className="rounded-xl glass-panel overflow-hidden">
             <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Jobs</h2>
               <span className="text-xs text-neutral-500">{jobs.length} total</span>

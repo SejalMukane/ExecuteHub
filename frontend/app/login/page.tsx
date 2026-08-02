@@ -7,6 +7,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,9 +46,12 @@ export default function LoginPage() {
       {/* Ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-neutral-800/20 rounded-full blur-3xl pointer-events-none" />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10 flex-1 flex flex-col">
         {/* Header */}
-        <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center justify-between border-b border-neutral-900">
+        <header className="h-16 max-w-7xl mx-auto w-full px-6 flex items-center justify-between glass-header">
           <Link href="/" className="font-bold tracking-tight text-base hover:text-neutral-300 transition-colors">
             ExecuteHub
           </Link>
@@ -74,7 +78,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 />
               </div>
 
@@ -89,7 +93,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 />
               </div>
 

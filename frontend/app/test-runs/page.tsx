@@ -77,7 +77,7 @@ export default function TestRunsPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+      <div className="rounded-xl glass-panel overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
           <h2 className="text-sm font-semibold">All Runs</h2>
           <span className="text-xs text-neutral-500">{runs.length} total</span>

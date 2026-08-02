@@ -39,6 +39,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -304,9 +305,12 @@ export default function ProjectDetailPage() {
         }}
       />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10 min-h-screen">
         {/* Top bar */}
-        <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="h-16 glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
@@ -401,7 +405,7 @@ export default function ProjectDetailPage() {
 
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Project settings */}
-              <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+              <div className="rounded-xl glass-panel p-6">
                 <div className="mb-5">
                   <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">Project Settings</p>
                   <h2 className="text-xl font-semibold tracking-tight">General</h2>
@@ -419,7 +423,7 @@ export default function ProjectDetailPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={!canWrite}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors disabled:opacity-50"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors disabled:opacity-50"
                     />
                   </div>
                   <div>
@@ -433,7 +437,7 @@ export default function ProjectDetailPage() {
                       onChange={(e) => setRepositoryUrl(e.target.value)}
                       disabled={!canWrite}
                       placeholder="https://github.com/acme/app"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors disabled:opacity-50"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors disabled:opacity-50"
                     />
                   </div>
                   <div>
@@ -446,7 +450,7 @@ export default function ProjectDetailPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       disabled={!canWrite}
                       rows={3}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors resize-none disabled:opacity-50"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors resize-none disabled:opacity-50"
                     />
                   </div>
                   {canWrite && (
@@ -470,7 +474,7 @@ export default function ProjectDetailPage() {
               </div>
 
               {/* GitHub repository */}
-              <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+              <div className="rounded-xl glass-panel p-6">
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">GitHub</p>
@@ -620,7 +624,7 @@ export default function ProjectDetailPage() {
 
             {/* Deliveries */}
             {repo && (
-              <div className="mt-8 rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+              <div className="mt-8 rounded-xl glass-panel overflow-hidden">
                 <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                   <h2 className="text-sm font-semibold flex items-center gap-2">
                     <Activity className="w-4 h-4 text-neutral-400" />
@@ -686,7 +690,7 @@ export default function ProjectDetailPage() {
       {showRepoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRepoModal(false)} />
-          <div className="relative w-full max-w-lg rounded-xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-xl glass-modal p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Select a repository</h3>
               <button onClick={() => setShowRepoModal(false)} className="text-neutral-500 hover:text-white transition-colors" aria-label="Close">
@@ -701,7 +705,7 @@ export default function ProjectDetailPage() {
                 value={repoSearch}
                 onChange={(e) => setRepoSearch(e.target.value)}
                 placeholder="Search repositories..."
-                className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
               />
             </div>
 
@@ -746,7 +750,7 @@ export default function ProjectDetailPage() {
       {showRunModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRunModal(false)} />
-          <div className="relative w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl">
+          <div className="relative w-full max-w-md rounded-xl glass-modal p-6">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Play className="w-4 h-4 text-neutral-400" />
@@ -771,7 +775,7 @@ export default function ProjectDetailPage() {
                   id="run-suite"
                   value={selectedSuiteId}
                   onChange={(e) => setSelectedSuiteId(e.target.value === "" ? "" : Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 >
                   <option value="" disabled>
                     Select a suite...
@@ -803,7 +807,7 @@ export default function ProjectDetailPage() {
                     min={1}
                     value={runTotalTests}
                     onChange={(e) => setRunTotalTests(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                   />
                   <p className="text-xs text-neutral-500 mt-1.5">
                     Tests are split into chunks of 20 per job.
@@ -821,7 +825,7 @@ export default function ProjectDetailPage() {
                   value={runBranch}
                   onChange={(e) => setRunBranch(e.target.value)}
                   placeholder="main"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                 />
               </div>
 
@@ -835,7 +839,7 @@ export default function ProjectDetailPage() {
                   value={runCommitSha}
                   onChange={(e) => setRunCommitSha(e.target.value)}
                   placeholder="e.g. a1b2c3d4e5f6..."
-                  className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-900 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors font-mono"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors font-mono"
                 />
               </div>
 

@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Lock, Globe, LayoutDashboard, User } from 'lucide-react';
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 const features = [
   {
@@ -38,6 +39,9 @@ export default function LandingPage() {
           backgroundSize: "40px 40px",
         }}
       />
+
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
       
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-neutral-800/20 rounded-full blur-3xl pointer-events-none" />
@@ -45,7 +49,7 @@ export default function LandingPage() {
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         
         {/* Sticky Header with glass effect */}
-        <header className="h-16 sticky top-0 z-50 flex justify-between items-center border-b border-neutral-900 bg-black/80 backdrop-blur-md">
+        <header className="h-16 sticky top-0 z-50 flex justify-between items-center glass-header">
           <span className="font-bold tracking-tight text-base">ExecuteHub</span>
           <div className="flex items-center gap-6">
             <ThemeToggle />
@@ -100,7 +104,7 @@ export default function LandingPage() {
                 return (
                   <div
                     key={feature.title}
-                    className="group relative p-6 rounded-xl border border-neutral-900 bg-neutral-950/50 hover:bg-neutral-900/30 hover:border-neutral-700 transition-all"
+                    className="group relative p-6 rounded-xl glass-panel hover:bg-white/5 hover:border-white/20 transition-all"
                   >
                     <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-neutral-800/0 to-neutral-800/0 group-hover:from-neutral-800/10 group-hover:to-neutral-800/0 transition-all pointer-events-none" />
                     <div className="relative">

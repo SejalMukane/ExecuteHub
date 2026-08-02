@@ -23,6 +23,7 @@ import GithubIcon from "@/components/GithubIcon";
 import { api, Project, GithubStatus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -176,9 +177,12 @@ function ProjectsPageContent() {
         }}
       />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10 min-h-screen">
         {/* Top bar */}
-        <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="h-16 glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
@@ -278,7 +282,7 @@ function ProjectsPageContent() {
             )}
 
             {/* Create project */}
-            <div className="mb-10 rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+            <div className="mb-10 rounded-xl glass-panel p-6">
               <div className="mb-5">
                 <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-1">New Project</p>
                 <h2 className="text-xl font-semibold tracking-tight">Create a project</h2>
@@ -297,7 +301,7 @@ function ProjectsPageContent() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="E-Commerce App"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                     />
                   </div>
                   <div>
@@ -310,7 +314,7 @@ function ProjectsPageContent() {
                       value={repositoryUrl}
                       onChange={(e) => setRepositoryUrl(e.target.value)}
                       placeholder="https://github.com/acme/app"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors"
                     />
                   </div>
                 </div>
@@ -325,7 +329,7 @@ function ProjectsPageContent() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What does this project cover?"
                     rows={2}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-md border border-neutral-800 bg-neutral-950 text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors resize-none"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-md glass-input text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 transition-colors resize-none"
                   />
                 </div>
 
@@ -353,7 +357,7 @@ function ProjectsPageContent() {
             </div>
 
             {/* Project listing */}
-            <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+            <div className="rounded-xl glass-panel overflow-hidden">
               <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
                 <h2 className="text-sm font-semibold">All Projects</h2>
                 <span className="text-xs text-neutral-500">{projects.length} total</span>

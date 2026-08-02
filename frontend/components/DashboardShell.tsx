@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundBlobs from "@/components/BackgroundBlobs";
 
 export type NavKey =
   | "dashboard"
@@ -59,9 +60,12 @@ export default function DashboardShell({
         }}
       />
 
+      {/* Ambient color blobs for the glassmorphism */}
+      <BackgroundBlobs />
+
       <div className="relative z-10 min-h-screen">
         {/* Top bar */}
-        <header className="h-16 border-b border-neutral-900 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <header className="h-16 glass-header sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
             <div className="flex items-center gap-8">
               <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>

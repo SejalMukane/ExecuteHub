@@ -236,7 +236,7 @@ export default function JobDetailPage() {
       )}
 
       {!job ? (
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 px-5 py-12 text-center">
+        <div className="rounded-xl glass-panel px-5 py-12 text-center">
           <p className="text-sm text-neutral-500">Job not found.</p>
         </div>
       ) : (
@@ -264,7 +264,7 @@ export default function JobDetailPage() {
 
           {/* Progress + status cards */}
           <div className="grid lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+            <div className="lg:col-span-2 rounded-xl glass-panel p-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Run Progress</p>
                 <span className="text-xs text-neutral-500">Auto-refreshing every 2s</span>
@@ -274,7 +274,7 @@ export default function JobDetailPage() {
                 {statusCards.map((card) => {
                   const Icon = card.icon;
                   return (
-                    <div key={card.label} className="p-4 rounded-lg border border-neutral-900 bg-black/40">
+                    <div key={card.label} className="p-4 rounded-lg border border-neutral-900 bg-black/10">
                       <div className="flex items-center gap-2 mb-2">
                         <Icon className={`w-3.5 h-3.5 ${card.tone}`} />
                         <span className="text-xs text-neutral-500 font-medium">{card.label}</span>
@@ -287,7 +287,7 @@ export default function JobDetailPage() {
             </div>
 
             {/* Worker card */}
-            <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-6">
+            <div className="rounded-xl glass-panel p-6">
               <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-4">Worker</p>
               <dl className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -396,7 +396,7 @@ function OverviewTab({ job, run }: { job: JobDetail; run: TestRun | null }) {
     { label: "Commit", value: run?.commit_sha ? run.commit_sha.slice(0, 7) : "—" },
   ];
   return (
-    <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+    <div className="rounded-xl glass-panel overflow-hidden">
       <div className="px-5 py-4 border-b border-neutral-900">
         <h2 className="text-sm font-semibold">Execution Overview</h2>
       </div>
@@ -432,7 +432,7 @@ function LogsTab({
   };
 
   return (
-    <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+    <div className="rounded-xl glass-panel overflow-hidden">
       <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
         <h2 className="text-sm font-semibold">Execution Logs</h2>
         <span className="text-xs text-neutral-500">{logs.length} lines · streaming</span>
@@ -480,7 +480,7 @@ function ArtifactsTab({
 
   if (artifacts.length === 0) {
     return (
-      <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 px-5 py-12 text-center">
+      <div className="rounded-xl glass-panel px-5 py-12 text-center">
         <p className="text-sm text-neutral-500">No artifacts captured yet.</p>
       </div>
     );
@@ -489,7 +489,7 @@ function ArtifactsTab({
   return (
     <div className="space-y-6">
       {screenshots.length > 0 && (
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-5">
+        <div className="rounded-xl glass-panel p-5">
           <h3 className="text-sm font-semibold mb-4">Screenshots</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {screenshots.map((a) => (
@@ -517,7 +517,7 @@ function ArtifactsTab({
       )}
 
       {videos.length > 0 && (
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-5">
+        <div className="rounded-xl glass-panel p-5">
           <h3 className="text-sm font-semibold mb-4">Videos</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {videos.map((a) => (
@@ -540,7 +540,7 @@ function ArtifactsTab({
       )}
 
       {traces.length > 0 && (
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 p-5">
+        <div className="rounded-xl glass-panel p-5">
           <h3 className="text-sm font-semibold mb-4">Traces</h3>
           <div className="space-y-2">
             {traces.map((a) => (
@@ -571,7 +571,7 @@ function ArtifactsTab({
 function SummaryTab({ job }: { job: JobDetail }) {
   const summary = job.summary;
   return (
-    <div className="rounded-xl border border-neutral-900 bg-neutral-950/50 overflow-hidden">
+    <div className="rounded-xl glass-panel overflow-hidden">
       <div className="px-5 py-4 border-b border-neutral-900">
         <h2 className="text-sm font-semibold">Execution Summary</h2>
       </div>
@@ -587,7 +587,7 @@ function SummaryTab({ job }: { job: JobDetail }) {
 
 function SummaryStat({ label, value, tone }: { label: string; value: string | number; tone: string }) {
   return (
-    <div className="bg-neutral-950/50 px-5 py-5">
+    <div className="bg-white/5 px-5 py-5">
       <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold mb-2">{label}</p>
       <span className={`text-xl font-bold tracking-tight tabular-nums ${tone}`}>{value}</span>
     </div>
