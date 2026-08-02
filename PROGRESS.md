@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 2 August 2026 (Week 5 in progress — distributed execution)
+**Last updated:** 2 August 2026 (Week 5 complete — distributed execution)
 ---
 
 ## Project Overview
@@ -464,9 +464,21 @@ bundle exec rspec   # 118 examples, 0 failures
 
 ## Week 5 — Distributed Execution Platform
 
-**Status:** 🔄 In progress
+**Status:** ✅ Complete
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
+
+### Part 14 — Test Coverage Sweep ✅
+
+- Final RSpec sweep across the whole distributed execution stack — every risk area has a dedicated spec file that pins the behaviour:
+  - **Fan-out / Scheduler**: `test_scheduler_spec.rb` — chunking (even + remainder), sequential chunk numbers, queued state, one `TestExecutionWorker.perform_async` per chunk, correct job ids, counters, started_at, and proof it only creates + dispatches (never executes).
+  - **Concurrent execution**: `multiple_workers_spec.rb` — in-memory overlap proves several jobs from one run execute simultaneously (max_active > 1); sequential path proves the run only completes when every job is terminal (50% → 100%).
+  - **Worker failure handling**: `worker_executor_spec.rb` — container always destroyed on failure, Docker create failures routed to retry, `docker cp` failures wrapped retryable, timeout kill, retry-limit exhaustion, run isolation.
+  - **Retry logic**: `job_failure_classifier_spec.rb` (retryable vs permanent) + `job_retrier_spec.rb` (retry scheduling, exhaustion, `error_type` only on permanent failure).
+  - **Heartbeat service**: `heartbeat_service_spec.rb` (beat upsert, stale → offline) + `heartbeat_worker_spec.rb` (self-reschedule, pool ensure, lock).
+  - **Worker registry**: `worker_registry_spec.rb` (register/claim/release, SKIP LOCKED, unavailable errors, counts).
+  - **Result aggregation**: `result_aggregator_spec.rb` (idempotent fan-in, last-jobs race, summary generation).
+- **Full backend suite: 230 examples, 0 failures** — Week 5 ships green.
 
 ### Part 13 — DB Wiring ✅
 
