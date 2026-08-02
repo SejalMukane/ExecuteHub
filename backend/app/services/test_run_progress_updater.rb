@@ -29,13 +29,19 @@ class TestRunProgressUpdater
     retrying = counts.fetch("retrying", 0)
     uploading = counts.fetch("uploading_artifacts", 0)
 
+    # Live buckets: running = actively executing; queued = waiting (incl. retries).
+    # The buckets partition total so dashboards can trust the sums.
+    running_bucket = running + uploading
+    queued_bucket = queued + retrying
+
     progress = total.zero? ? 0.0 : (completed.to_f / total * 100).round(1)
 
     @test_run.update!(
       total_jobs: total,
       completed_jobs: completed,
       failed_jobs: failed,
-      queued_jobs: queued,
+      queued_jobs: queued_bucket,
+      running_jobs: running_bucket,
       progress_percentage: progress
     )
 

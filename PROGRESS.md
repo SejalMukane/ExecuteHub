@@ -468,6 +468,13 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 9 — Test Run Progress ✅
+
+- New `running_jobs` column on `test_runs` (migration `20260802040000`). `TestRunProgressUpdater` now persists live buckets that partition the run's jobs: `queued_jobs` = queued + retrying, `running_jobs` = running + uploading_artifacts, `completed_jobs`, `failed_jobs` (sum = total_jobs), plus `progress_percentage`.
+- New `TestRun#progress_snapshot` — one hash with every live counter (queued/running/completed/failed jobs, passed/failed tests, screenshots/videos, duration, progress, timestamps) for dashboards and WebSocket broadcasts.
+- TestRun API response now includes `running_jobs`.
+- Specs: updated `test_run_progress_updater_spec.rb` (running bucket + retrying-as-queued), `test_run_spec.rb` (#progress_snapshot).
+
 ### Part 8 — Load Balancing ✅
 
 - New `LoadBalancer` service — the distributed traffic cop: `claim!` assigns a Job to the next available worker (atomic via registry), `requeue!` puts a Job back on the queue with backoff when the pool is saturated, `recover_orphans!` re-dispatches Jobs whose worker went Offline mid-run (routed through JobRetrier as `worker_crash`, retried up to the limit), `dispatch_queued!` sweeps any Job still sitting `queued`.

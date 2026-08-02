@@ -52,4 +52,30 @@ RSpec.describe TestRun, type: :model do
       expect(described_class.recent.to_a).to eq([newer, older])
     end
   end
+
+  describe "#progress_snapshot" do
+    it "returns the live counters for the distributed dashboard" do
+      test_run = create(:test_run, total_tests: 40, total_jobs: 2, queued_jobs: 0,
+                                   running_jobs: 1, completed_jobs: 1, failed_jobs: 0,
+                                   passed_tests: 20, failed_tests: 0,
+                                   total_screenshots: 3, total_videos: 1,
+                                   total_duration_ms: 1234, progress_percentage: 50.0,
+                                   started_at: Time.current)
+
+      snapshot = test_run.progress_snapshot
+
+      expect(snapshot[:id]).to eq(test_run.id)
+      expect(snapshot[:status]).to eq("queued")
+      expect(snapshot[:total_jobs]).to eq(2)
+      expect(snapshot[:queued_jobs]).to eq(0)
+      expect(snapshot[:running_jobs]).to eq(1)
+      expect(snapshot[:completed_jobs]).to eq(1)
+      expect(snapshot[:failed_jobs]).to eq(0)
+      expect(snapshot[:passed_tests]).to eq(20)
+      expect(snapshot[:failed_tests]).to eq(0)
+      expect(snapshot[:total_duration_ms]).to eq(1234)
+      expect(snapshot[:progress_percentage]).to eq(50.0)
+      expect(snapshot[:started_at]).to be_present
+    end
+  end
 end

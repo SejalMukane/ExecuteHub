@@ -45,6 +45,33 @@ RSpec.describe TestRunProgressUpdater, type: :service do
 
         expect(test_run.reload.status).to eq("running")
       end
+
+      it "persists the live running bucket (running + uploading_artifacts)" do
+        test_run = create(:test_run)
+        create(:job, test_run: test_run, status: :running)
+        create(:job, test_run: test_run, status: :uploading_artifacts)
+        create(:job, test_run: test_run, status: :queued)
+
+        described_class.call(test_run)
+
+        test_run.reload
+        expect(test_run.running_jobs).to eq(2)
+        expect(test_run.queued_jobs).to eq(1)
+        expect(test_run.total_jobs).to eq(3)
+      end
+    end
+
+    context "with a retrying job" do
+      it "counts it as queued (waiting) not running" do
+        test_run = create(:test_run)
+        create(:job, test_run: test_run, status: :retrying)
+
+        described_class.call(test_run)
+
+        test_run.reload
+        expect(test_run.queued_jobs).to eq(1)
+        expect(test_run.running_jobs).to eq(0)
+      end
     end
 
     context "with jobs still uploading artifacts" do

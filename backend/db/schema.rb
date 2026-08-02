@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_040000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -181,6 +181,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_030000) do
     t.float "progress_percentage", default: 0.0, null: false
     t.bigint "project_id", null: false
     t.integer "queued_jobs", default: 0, null: false
+    t.integer "running_jobs", default: 0, null: false
     t.datetime "started_at"
     t.string "status", default: "queued", null: false
     t.bigint "test_suite_id"
