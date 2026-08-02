@@ -1,5 +1,13 @@
-# TestScheduler fans a TestRun out into N Job chunks and pushes each Job onto
-# the Sidekiq "test_execution" queue.
+# TestScheduler is the fan-out step of a TestRun: it splits total_tests into N
+# Job chunks and immediately dispatches EVERY Job onto the Sidekiq
+# "test_execution" queue. This is the ONLY thing the scheduler does.
+#
+#   TestRun -> split into chunks -> create Jobs -> queue every Job
+#
+# The scheduler stays lightweight on purpose:
+#   - NO execution logic (workers own that)
+#   - NO result aggregation (ResultAggregator owns that)
+#   - NO worker assignment (WorkerRegistry + load balancing own that)
 #
 # Chunking:
 #   number_of_jobs = ceil(total_tests / chunk_size)
@@ -17,7 +25,7 @@ class TestScheduler
   end
 
   def call
-    Rails.logger.info("[TestScheduler] Scheduler Started for TestRun ##{@test_run.id}")
+    log("Scheduler started for TestRun ##{@test_run.id}")
 
     # Nothing to schedule when the run carries no tests. Guard before any DB
     # write so an invalid record never raises.
@@ -25,29 +33,31 @@ class TestScheduler
 
     @test_run.update!(status: :scheduling, started_at: @test_run.started_at || Time.current)
 
-    create_and_enqueue_jobs
+    jobs = create_jobs
+    dispatch_jobs(jobs)
 
     @test_run.update!(
       status: :queued,
-      total_jobs: @test_run.jobs.count,
-      queued_jobs: @test_run.jobs.queued.count,
+      total_jobs: jobs.size,
+      queued_jobs: jobs.size,
+      completed_jobs: 0,
+      failed_jobs: 0,
       progress_percentage: 0.0
     )
 
-    Rails.logger.info(
-      "[TestScheduler] #{@test_run.total_jobs} Jobs Created and Queued for TestRun ##{@test_run.id}"
-    )
+    log("#{jobs.size} Jobs created and queued for TestRun ##{@test_run.id}")
     @test_run
   end
 
   private
 
-  # Splits total_tests into chunks and creates + enqueues one Job per chunk.
-  def create_and_enqueue_jobs
+  # Splits total_tests into equal-ish chunks (remainder goes in the last one)
+  # and persists one queued Job per chunk. Persistence only — nothing runs yet.
+  def create_jobs
     remaining = @test_run.total_tests
     number_of_jobs = (remaining.to_f / @chunk_size).ceil
 
-    number_of_jobs.times do |index|
+    Array.new(number_of_jobs) do |index|
       test_count = [@chunk_size, remaining].min
       remaining -= test_count
 
@@ -56,10 +66,21 @@ class TestScheduler
         test_count: test_count,
         status: :queued
       )
-      Rails.logger.info("[TestScheduler] Job ##{job.id} Created for TestRun ##{@test_run.id} (chunk #{job.chunk_number}, #{job.test_count} tests)")
-
-      TestExecutionWorker.perform_async(job.id)
-      Rails.logger.info("[TestScheduler] Job ##{job.id} Queued (enqueued to test_execution) for TestRun ##{@test_run.id}")
+      log("Job ##{job.id} created (chunk #{job.chunk_number}, #{job.test_count} tests)")
+      job
     end
+  end
+
+  # The fan-out: push every Job into Redis immediately. Workers pull them
+  # concurrently and never block each other. No job is ever left behind.
+  def dispatch_jobs(jobs)
+    jobs.each do |job|
+      TestExecutionWorker.perform_async(job.id)
+      log("Job ##{job.id} dispatched to test_execution")
+    end
+  end
+
+  def log(message)
+    Rails.logger.info("[TestScheduler] #{message}")
   end
 end

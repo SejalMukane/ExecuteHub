@@ -468,6 +468,13 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 2 — Fan-Out Execution ✅
+
+- `TestScheduler` refactored into explicit steps: `create_jobs` (chunk + persist) → `dispatch_jobs` (push every Job into Redis immediately via `TestExecutionWorker.perform_async`).
+- Scheduler stays lightweight: no execution logic, no result aggregation, no worker assignment — it only creates Jobs and queues every one.
+- Counters are reset on reschedule (`completed_jobs`/`failed_jobs` = 0).
+- New specs: fan-out dispatches every job into the queue immediately; scheduler never executes anything.
+
 ### Part 1 — Multiple Concurrent Workers ✅
 
 - Sidekiq runs `:concurrency: 5` worker threads (`config/sidekiq.yml`), each mapping 1:1 to a logical worker (Worker-01..Worker-05).

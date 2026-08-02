@@ -49,6 +49,18 @@ RSpec.describe TestScheduler, type: :service do
       expect(queued.map { |entry| entry["class"] }).to all(eq("TestExecutionWorker"))
     end
 
+    it "dispatches every job into the queue immediately (fan-out)" do
+      described_class.call(test_run, chunk_size: chunk_size)
+      expect(Sidekiq::Queues["test_execution"].size).to eq(test_run.jobs.count)
+    end
+
+    it "stays lightweight — it only creates and queues jobs, never executes them" do
+      expect(WorkerExecutor).not_to receive(:execute)
+      expect(TestExecutionWorker).to receive(:perform_async).exactly(5).times.and_call_original
+
+      described_class.call(test_run, chunk_size: chunk_size)
+    end
+
     it "enqueues the correct job ids" do
       described_class.call(test_run, chunk_size: chunk_size)
       job_ids = test_run.jobs.order(:chunk_number).pluck(:id)
