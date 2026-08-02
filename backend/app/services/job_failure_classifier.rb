@@ -76,7 +76,9 @@ class JobFailureClassifier
   end
 
   def docker_error?
-    @error.is_a?(DockerService::DockerError) || message.match?(/docker/i)
+    @error.is_a?(DockerService::DockerError) ||
+      @error.is_a?(WorkerExecutor::ExecutionError) ||
+      message.match?(/docker/i)
   end
 
   def network_error?
@@ -84,7 +86,7 @@ class JobFailureClassifier
   end
 
   def timeout_error?
-    @error.is_a?(Timeout::Error) || message.match?(/exceeded.*timeout/i)
+    @error.is_a?(Timeout::Error) || @error.is_a?(WorkerExecutor::ExecutionTimeoutError) || message.match?(/exceeded.*timeout/i)
   end
 
   def message

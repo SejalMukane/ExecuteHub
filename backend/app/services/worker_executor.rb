@@ -4,7 +4,7 @@
 #   mark running
 #     -> create container
 #     -> start container
-#     -> stream Playwright output into ExecutionLogs
+#     -> stream Playwright output into ExecutionLogs (with a timeout watchdog)
 #     -> mark uploading_artifacts
 #     -> copy artifacts out of the container (docker cp)
 #     -> parse the Playwright JSON report
@@ -12,6 +12,13 @@
 #     -> mark completed / failed (timestamps)
 #     -> refresh TestRun progress
 #     -> destroy the container (ensure)
+#
+# Failure handling (Part 5):
+#   - infrastructure failures (Docker, network) are routed through JobRetrier,
+#     which retries retryable errors and permanently fails the rest
+#   - assertion / browser test failures never retry — they fail immediately
+#   - an execution timeout kills the container and fails the Job
+#   - a failing Job NEVER stops other Jobs: every Job runs independently
 #
 # The class intentionally contains NO Sidekiq logic — TestExecutionWorker only
 # decides *when* to run and delegates *how* to this service, keeping the worker
@@ -21,11 +28,15 @@
 #   - Docker primitives  -> DockerService (the only Docker-aware class)
 #   - Storage layout     -> ArtifactStore
 #   - Report parsing     -> PlaywrightOutputParser
+#   - Failure policy     -> JobRetrier / JobFailureClassifier
 #   - DB persistence     -> Job / ExecutionLog / Artifact models
 class WorkerExecutor
   # Raised for recoverable execution problems (container/Docker failures,
   # missing artifact payloads) that should fail the Job.
   class ExecutionError < StandardError; end
+
+  # Raised when a Job's container runs longer than worker_execution_timeout_seconds.
+  class ExecutionTimeoutError < StandardError; end
 
   def self.execute(job)
     new(job).execute
@@ -54,7 +65,7 @@ class WorkerExecutor
     @docker.start(container)
     log(:info, "Container started")
 
-    run_playwright(container)
+    run_playwright_with_timeout(container)
 
     upload_artifacts(container)
 
@@ -68,9 +79,23 @@ class WorkerExecutor
 
   private
 
-  def run_playwright(container)
+  # Streams Playwright output while watching a wall-clock budget. If the
+  # container runs past the timeout the container is killed and the Job fails
+  # with ExecutionTimeoutError (never retried — see JobFailureClassifier).
+  def run_playwright_with_timeout(container)
     log(:info, "Running Playwright tests")
-    @docker.stream_logs(container) { |line| log(:info, clean(line)) }
+    thread = Thread.new do
+      @docker.stream_logs(container) { |line| log(:info, clean(line)) }
+    rescue StandardError => e
+      Rails.logger.warn("[WorkerExecutor] Log stream ended early: #{e.message}")
+    end
+
+    if thread.join(timeout_seconds).nil?
+      log(:error, "Execution exceeded #{timeout_seconds}s timeout — terminating container")
+      @docker.destroy(container)
+      raise ExecutionTimeoutError, "Execution exceeded #{timeout_seconds}s timeout"
+    end
+
     @exit_code = @docker.exit_code(container)
     log(:info, "Playwright finished (exit code #{@exit_code})")
   end
@@ -107,11 +132,13 @@ class WorkerExecutor
       job.mark_completed!
       log(:info, "Execution finished")
     else
+      # Assertion / browser test failures are NOT retried — they fail now.
       job.update!(
         passed_tests: @summary[:passed],
         failed_tests: @summary[:failed],
         duration_ms: duration_ms,
-        error_message: "Playwright reported #{@summary[:failed]} failed test(s)"
+        error_message: "Playwright reported #{@summary[:failed]} failed test(s)",
+        error_type: "test_failure"
       )
       job.mark_failed!
       log(:warn, "Execution finished with test failures")
@@ -138,6 +165,16 @@ class WorkerExecutor
     "executehub-job-#{job.id}-#{SecureRandom.hex(4)}"
   end
 
+  # Routes an execution failure through JobRetrier: retryable infra errors are
+  # retried (up to max_job_retries), everything else fails permanently. The
+  # failure is logged and progress is refreshed so the run keeps moving — one
+  # failed worker never stops the other Jobs.
+  def fail_job(error)
+    log(:error, "Job failed: #{error.message}")
+    JobRetrier.call(job, error)
+    TestRunProgressUpdater.call(job.test_run)
+  end
+
   def persist_summary
     job.update!(
       passed_tests: @summary[:passed],
@@ -159,13 +196,6 @@ class WorkerExecutor
       path: @artifact_store.relative(path),
       size: File.size?(path).to_i
     }
-  end
-
-  def fail_job(error)
-    log(:error, "Job failed: #{error.message}")
-    job.update!(error_message: error.message)
-    job.mark_failed!
-    TestRunProgressUpdater.call(job.test_run)
   end
 
   def destroy_container(container)
@@ -196,5 +226,9 @@ class WorkerExecutor
   # Hashes. with_indifferent_access lets us read string keys everywhere.
   def settings
     @settings ||= (Rails.configuration.executehub["worker"] || {}).with_indifferent_access
+  end
+
+  def timeout_seconds
+    Rails.configuration.executehub.fetch("worker_execution_timeout_seconds", 600).to_i
   end
 end

@@ -94,22 +94,23 @@ RSpec.describe WorkerExecutor, type: :service do
       end
     end
 
-    context "when the container cannot be created" do
-      it "marks the job failed and stores the Docker error" do
+    context "when the container cannot be created (Docker failure)" do
+      it "routes the infra failure to the retry policy instead of failing forever" do
         allow(docker).to receive(:create)
           .and_raise(DockerService::DockerError, "No such image: executehub-playwright:latest")
 
         executor.execute
 
         job.reload
-        expect(job.status).to eq("failed")
-        expect(job.error_message).to include("No such image")
-        expect(job.finished_at).to be_present
+        expect(job.status).to eq("retrying")
+        expect(job.retry_count).to eq(1)
+        expect(job.job_retries.last.reason).to eq("docker_failure")
+        expect(job.job_retries.last.error_message).to include("No such image")
       end
     end
 
     context "when artifact upload fails" do
-      it "wraps docker cp failures into an ExecutionError message" do
+      it "wraps docker cp failures into a retryable ExecutionError" do
         allow(docker).to receive(:create).and_return(container)
         allow(docker).to receive(:start)
         allow(docker).to receive(:stream_logs)
@@ -120,8 +121,8 @@ RSpec.describe WorkerExecutor, type: :service do
         executor.execute
 
         job.reload
-        expect(job.status).to eq("failed")
-        expect(job.error_message).to include("Artifact upload failed: cp failed")
+        expect(job.status).to eq("retrying")
+        expect(job.job_retries.last.error_message).to include("Artifact upload failed: cp failed")
       end
 
       it "fails when the Playwright report file is missing" do
@@ -136,8 +137,64 @@ RSpec.describe WorkerExecutor, type: :service do
         executor.execute
 
         job.reload
+        expect(job.status).to eq("retrying")
+        expect(job.job_retries.last.error_message).to include("Artifact upload failed")
+      end
+    end
+
+    context "when the job exceeds the execution timeout" do
+      it "kills the container and fails the job with execution_timeout" do
+        allow(docker).to receive(:create).and_return(container)
+        allow(docker).to receive(:start)
+        # A job that never finishes streaming keeps the worker thread blocked.
+        allow(docker).to receive(:stream_logs) { sleep }
+
+        # The watchdog waits timeout_seconds before killing the container.
+        allow(Rails.configuration.executehub).to receive(:fetch).and_call_original
+        allow(Rails.configuration.executehub).to receive(:fetch)
+          .with("worker_execution_timeout_seconds", 600).and_return(0)
+
+        allow(docker).to receive(:destroy).with(container)
+        expect(TestRunProgressUpdater).to receive(:call).with(job.test_run)
+
+        executor.execute
+
+        job.reload
         expect(job.status).to eq("failed")
-        expect(job.error_message).to include("Artifact upload failed")
+        expect(job.error_type).to eq("execution_timeout")
+        expect(job.error_message).to include("exceeded 0s timeout")
+        expect(job.finished_at).to be_present
+      end
+    end
+
+    context "when an unexpected application error escapes" do
+      it "fails the job permanently (application_error, not retried)" do
+        allow(docker).to receive(:create).and_return(container)
+        allow(docker).to receive(:start)
+        allow(docker).to receive(:stream_logs)
+        allow(docker).to receive(:exit_code).and_raise(ArgumentError, "bug in executor")
+        allow(docker).to receive(:destroy).with(container)
+
+        executor.execute
+
+        job.reload
+        expect(job.status).to eq("failed")
+        expect(job.error_type).to eq("application_error")
+        expect(job.error_message).to eq("bug in executor")
+      end
+    end
+
+    context "when a job is already at its retry limit" do
+      it "permanently fails instead of retrying again" do
+        job.update!(retry_count: 3)
+        allow(docker).to receive(:create)
+          .and_raise(DockerService::DockerError, "no image")
+
+        executor.execute
+
+        job.reload
+        expect(job.status).to eq("failed")
+        expect(job.error_type).to eq("docker_failure")
       end
     end
 
@@ -145,13 +202,46 @@ RSpec.describe WorkerExecutor, type: :service do
       allow(docker).to receive(:create).and_return(container)
       allow(docker).to receive(:start)
       allow(docker).to receive(:stream_logs)
-      allow(docker).to receive(:exit_code).and_raise("docker inspect exploded")
+      allow(docker).to receive(:exit_code).and_raise("executor inspection exploded")
       expect(docker).to receive(:destroy).with(container)
 
       executor.execute
 
       job.reload
       expect(job.status).to eq("failed")
+    end
+
+    it "continues the run when a job fails — other jobs are not affected" do
+      test_run = create(:test_run)
+      failing = create(:job, test_run: test_run, status: :queued)
+      passing = create(:job, test_run: test_run, status: :queued)
+
+      # The first worker blows up with an application error (not retryable).
+      docker_a = instance_double(DockerService)
+      first = described_class.new(failing, docker: docker_a, parser: parser, artifact_store: artifact_store)
+      allow(docker_a).to receive(:create).and_raise(ArgumentError, "worker crashed")
+      allow(docker_a).to receive(:destroy)
+
+      # The second worker succeeds normally.
+      docker_b = instance_double(DockerService)
+      second = described_class.new(passing, docker: docker_b, parser: parser, artifact_store: artifact_store)
+      allow(artifact_store).to receive(:prepare).and_return(job_dir)
+      allow(artifact_store).to receive(:relative).and_return("job_#{passing.id}/artifacts/video.webm")
+      allow(docker_b).to receive(:create).and_return(container)
+      allow(docker_b).to receive(:start)
+      allow(docker_b).to receive(:stream_logs).and_yield("  ✓  1 passed")
+      allow(docker_b).to receive(:exit_code).and_return(0)
+      allow(docker_b).to receive(:copy)
+      allow(parser).to receive(:parse).and_return(empty_summary)
+      allow(docker_b).to receive(:destroy)
+
+      allow(TestRunProgressUpdater).to receive(:call).and_call_original
+      first.execute
+      second.execute
+
+      expect(failing.reload.status).to eq("failed")
+      expect(passing.reload.status).to eq("completed")
+      expect(test_run.reload.status).to eq("failed")
     end
 
     it "skips blank and ANSI-only streamed lines when storing logs" do
@@ -171,7 +261,7 @@ RSpec.describe WorkerExecutor, type: :service do
       expect(messages.all?(&:present?)).to be(true)
     end
 
-    it "destroys the container even when Docker errors midway" do
+    it "destroys the container even when Docker errors midway (and retries)" do
       allow(docker).to receive(:create).and_return(container)
       allow(docker).to receive(:start).and_raise(DockerService::DockerError, "start failed")
       expect(docker).to receive(:destroy).with(container)
@@ -179,8 +269,8 @@ RSpec.describe WorkerExecutor, type: :service do
       executor.execute
 
       job.reload
-      expect(job.status).to eq("failed")
-      expect(job.error_message).to include("start failed")
+      expect(job.status).to eq("retrying")
+      expect(job.job_retries.last.error_message).to include("start failed")
     end
   end
 end

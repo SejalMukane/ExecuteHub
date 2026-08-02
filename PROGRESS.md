@@ -468,6 +468,14 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 5 — Failure Handling ✅
+
+- `WorkerExecutor` routes every execution failure through `JobRetrier`: infra failures (Docker, network) retry, app/test failures fail permanently.
+- Assertion / browser test failures never retry — `finish_job` marks failed with `error_type: "test_failure"`.
+- New execution timeout watchdog: if a container runs past `worker_execution_timeout_seconds` (default 600) it is killed and the job fails with `execution_timeout` (never retried).
+- One failed worker never stops the run — every job executes independently; spec proves a failing job + a passing job coexist (run ends `failed` with the passing job `completed`).
+- Updated `worker_executor_spec.rb` (12 examples) covering retry routing, timeout kill, retry-limit exhaustion, and run isolation.
+
 ### Part 4 — Retry Mechanism ✅
 
 - New `app/services/job_failure_classifier.rb` — labels failures with a reason and retryability:
