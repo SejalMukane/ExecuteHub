@@ -13,11 +13,43 @@ import {
   XCircle,
   Clock,
   FolderKanban,
+  Play,
 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
-import StatusBadge, { ProgressBar } from "@/components/StatusBadge";
-import { api, TestRun } from "@/lib/api";
+import StatusBadge, { ProgressBar, StatusTone } from "@/components/StatusBadge";
+import { api, Job, TestRun, TestRunProgress } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+
+// Color code every chunk in the Test Matrix by its current state.
+function matrixTone(status: string): StatusTone {
+  switch (status) {
+    case "completed":
+      return "green";
+    case "failed":
+      return "red";
+    case "running":
+    case "uploading_artifacts":
+      return "yellow";
+    case "queued":
+    case "retrying":
+      return "blue";
+    default:
+      return "neutral";
+  }
+}
+
+const MATRIX_TONES: Record<StatusTone, string> = {
+  blue: "bg-blue-500/15 border-blue-500/40 text-blue-400",
+  yellow: "bg-amber-500/15 border-amber-500/40 text-amber-400",
+  green: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400",
+  red: "bg-red-500/15 border-red-500/40 text-red-400",
+  neutral: "bg-neutral-900 border-neutral-800 text-neutral-500",
+};
+
+function matrixClassName(job: Job): string {
+  const tone = matrixTone(job.status);
+  return `${MATRIX_TONES[tone]} ${job.status === "running" || job.status === "uploading_artifacts" ? "animate-pulse" : ""}`;
+}
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -39,12 +71,14 @@ export default function TestRunDetailPage() {
   const router = useRouter();
   const { token, loading } = useAuth();
   const [run, setRun] = useState<TestRun | null>(null);
+  const [progress, setProgress] = useState<TestRunProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
 
+  // Jobs + run metadata refresh every 5s.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -66,6 +100,29 @@ export default function TestRunDetailPage() {
     };
   }, [token, runId]);
 
+  // Live counters refresh every 2s (cheap snapshot, no job rows) so the
+  // distributed execution view stays current between job-list refreshes.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await api.getTestRunProgress(token, runId);
+        if (!cancelled) setProgress(res.test_run);
+      } catch {
+        // Ignore transient progress-poll failures; the 5s run poll covers us.
+      }
+    };
+
+    load();
+    const timer = setInterval(load, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [token, runId]);
+
   if (loading || !token) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -76,13 +133,18 @@ export default function TestRunDetailPage() {
 
   const jobs = run?.jobs ?? [];
 
-  const stats = run
+  // Live view prefers the 2s progress snapshot and falls back to the 5s run.
+  const live = progress ?? run;
+  const runStatus: string = live?.status ?? run?.status ?? "queued";
+
+  const stats = live
     ? [
-        { label: "Total Tests", value: run.total_tests, icon: Layers },
-        { label: "Total Jobs", value: run.total_jobs, icon: Layers },
-        { label: "Completed", value: run.completed_jobs, icon: CheckCircle2 },
-        { label: "Failed", value: run.failed_jobs, icon: XCircle },
-        { label: "Queued", value: run.queued_jobs, icon: Clock },
+        { label: "Total Tests", value: live.total_tests, icon: Layers },
+        { label: "Total Jobs", value: live.total_jobs, icon: Layers },
+        { label: "Running", value: live.running_jobs, icon: Play },
+        { label: "Queued", value: live.queued_jobs, icon: Clock },
+        { label: "Completed", value: live.completed_jobs, icon: CheckCircle2 },
+        { label: "Failed", value: live.failed_jobs, icon: XCircle },
       ]
     : [];
 
@@ -135,8 +197,8 @@ export default function TestRunDetailPage() {
                 </p>
               </div>
               <StatusBadge
-                status={run.status}
-                pulse={run.status === "running" || run.status === "scheduling"}
+                status={runStatus}
+                pulse={runStatus === "running" || runStatus === "scheduling"}
               />
             </div>
           </div>
@@ -146,10 +208,10 @@ export default function TestRunDetailPage() {
             <div className="lg:col-span-2 rounded-xl glass-panel p-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Progress</p>
-                <span className="text-xs text-neutral-500">Auto-refreshing every 5s</span>
+                <span className="text-xs text-neutral-500">Live · refreshes every 2s</span>
               </div>
-              <ProgressBar value={run.progress_percentage} />
-              <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <ProgressBar value={live?.progress_percentage ?? run.progress_percentage} />
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {stats.map((stat) => {
                   const Icon = stat.icon;
                   return (
@@ -189,7 +251,7 @@ export default function TestRunDetailPage() {
                 <div className="flex items-center justify-between">
                   <dt className="text-neutral-500">Status</dt>
                   <dd>
-                    <StatusBadge status={run.status} />
+                    <StatusBadge status={runStatus} />
                   </dd>
                 </div>
                 <div className="flex items-center justify-between">
@@ -206,6 +268,47 @@ export default function TestRunDetailPage() {
                 </div>
               </dl>
             </div>
+          </div>
+
+          {/* Test Matrix */}
+          <div className="rounded-xl glass-panel p-5 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold">Test Matrix</h2>
+              <span className="text-xs text-neutral-500">{jobs.length} chunks</span>
+            </div>
+
+            {jobs.length === 0 ? (
+              <p className="text-sm text-neutral-500">No chunks to display yet.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-5 sm:grid-cols-10 lg:grid-cols-10 gap-1.5">
+                  {jobs.map((job) => (
+                    <Link
+                      key={job.id}
+                      href={`/test-runs/${run.id}/jobs/${job.id}`}
+                      title={`Chunk #${job.chunk_number}: ${job.status}`}
+                      className={`aspect-square rounded-md border flex items-center justify-center text-xs font-medium tabular-nums transition-transform hover:scale-110 ${matrixClassName(job)}`}
+                    >
+                      {job.chunk_number}
+                    </Link>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-5 mt-4 text-xs">
+                  <span className="inline-flex items-center gap-1.5 text-blue-400">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" /> Queued
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-amber-400">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" /> Running
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Completed
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-red-400">
+                    <span className="w-2 h-2 rounded-full bg-red-500" /> Failed
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Job list */}

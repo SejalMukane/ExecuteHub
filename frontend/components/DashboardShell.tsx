@@ -12,6 +12,7 @@ import {
   LogOut,
   Rocket,
   Timer,
+  Cpu,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -23,6 +24,7 @@ export type NavKey =
   | "projects"
   | "test-runs"
   | "queue"
+  | "workers"
   | "sessions"
   | "profile";
 
@@ -31,6 +33,7 @@ const NAV_ITEMS: { label: string; href: string; key: NavKey; icon: typeof Layout
   { label: "Projects", href: "/projects", key: "projects", icon: FolderKanban },
   { label: "Test Runs", href: "/test-runs", key: "test-runs", icon: Rocket },
   { label: "Queue", href: "/queue", key: "queue", icon: Timer },
+  { label: "Workers", href: "/workers", key: "workers", icon: Cpu },
   { label: "Browser Sessions", href: "/dashboard#sessions", key: "sessions", icon: Server },
   { label: "Profile", href: "/profile", key: "profile", icon: User },
 ];

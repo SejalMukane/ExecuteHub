@@ -41,6 +41,7 @@ module Api
             chunk_number: job.chunk_number,
             test_count: job.test_count,
             status: job.status,
+            container_id: job.container_id,
             started_at: job.started_at
           }
         }

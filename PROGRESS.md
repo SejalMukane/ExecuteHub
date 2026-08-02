@@ -468,6 +468,15 @@ bundle exec rspec   # 118 examples, 0 failures
 
 **Goal:** Transform ExecuteHub into a true distributed execution platform — multiple workers executing jobs concurrently with fault tolerance, worker monitoring, retries, result aggregation and live dashboards. Workers still run locally via Docker (no Kubernetes yet).
 
+### Part 11 — Distributed Execution Frontend ✅
+
+- **Worker Pool page** (`/workers`, nav item added): pool summary cards (total/idle/busy/offline) + color-coded Worker Health cards showing worker name, live status (idle=green, busy=yellow, offline=red), heartbeat age, CPU/memory usage bars (red >75%, amber >50%), execution count, and the running job (chunk, container ID, running time). Auto-refreshes every 5s (matches the heartbeat driver).
+- **Distributed Execution view** (`/test-runs/[id]`): live 2s polling of the progress snapshot merged with a 5s run poll — running/queued/completed/failed counters, live status badge + progress bar.
+- **Test Matrix**: grid of every chunk color-coded by state (queued blue / running yellow / completed green / failed red, pulsing while running) with a legend.
+- `lib/api.ts`: `Worker`, `WorkerPoolResponse`, `WorkerCounts`, `TestRunProgress` types + `listWorkers`, `getWorker`, `getTestRunProgress`; `TestRun` gains live fields.
+- Worker API's `current_job` now includes `container_id` for the cards.
+- Verified: `tsc --noEmit` clean, `next build` succeeds (12 routes), backend suite 219 examples green.
+
 ### Part 10 — Distributed Execution APIs ✅
 
 - `GET /api/v1/workers` — pool summary (`counts`: total/idle/busy/offline) + every worker (name, status, heartbeat, cpu/memory, execution_count, current job when busy).

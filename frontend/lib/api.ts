@@ -217,11 +217,54 @@ export interface TestRun {
   completed_jobs: number;
   failed_jobs: number;
   queued_jobs: number;
+  running_jobs: number;
+  passed_tests: number;
+  failed_tests: number;
+  total_duration_ms: number | null;
+  total_screenshots: number;
+  total_videos: number;
   progress_percentage: number;
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
   jobs?: Job[];
+}
+
+export type TestRunProgress = Omit<TestRun, "jobs" | "project_name" | "branch" | "commit_sha" | "test_suite" | "created_at">;
+
+export type WorkerStatus = "idle" | "busy" | "offline";
+
+export interface WorkerCurrentJob {
+  id: number;
+  test_run_id: number;
+  chunk_number: number;
+  test_count: number;
+  status: string;
+  container_id: string | null;
+  started_at: string | null;
+}
+
+export interface Worker {
+  id: number;
+  worker_name: string;
+  status: WorkerStatus;
+  last_seen_at: string | null;
+  cpu_usage: number | null;
+  memory_usage: number | null;
+  execution_count: number;
+  current_job: WorkerCurrentJob | null;
+}
+
+export interface WorkerCounts {
+  total: number;
+  idle: number;
+  busy: number;
+  offline: number;
+}
+
+export interface WorkerPoolResponse {
+  counts: WorkerCounts;
+  workers: Worker[];
 }
 
 export interface QueueStats {
@@ -393,4 +436,13 @@ export const api = {
 
   getQueueStats: (token: string) =>
     request<{ queue: QueueStats }>("/queue", { token }),
+
+  listWorkers: (token: string) =>
+    request<WorkerPoolResponse>("/workers", { token }),
+
+  getWorker: (token: string, id: number) =>
+    request<{ worker: Worker }>(`/workers/${id}`, { token }),
+
+  getTestRunProgress: (token: string, id: number) =>
+    request<{ test_run: TestRunProgress }>(`/test_runs/${id}/progress`, { token }),
 };

@@ -23,7 +23,7 @@ RSpec.describe "Worker Pool API", type: :request do
     end
 
     it "includes the current job of a busy worker" do
-      job = create(:job, status: :running)
+      job = create(:job, status: :running, container_id: "abc123")
       create(:worker_heartbeat, worker_name: "Worker-01", status: :busy, current_job: job)
 
       get "/api/v1/workers", headers: headers
@@ -31,6 +31,7 @@ RSpec.describe "Worker Pool API", type: :request do
       worker = JSON.parse(response.body)["workers"].first
       expect(worker["current_job"]["id"]).to eq(job.id)
       expect(worker["current_job"]["status"]).to eq("running")
+      expect(worker["current_job"]["container_id"]).to eq("abc123")
     end
 
     it "requires authentication" do
