@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -14,14 +14,13 @@ import {
   Clock,
   FolderKanban,
   Play,
+  Radio,
 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import StatusBadge, { ProgressBar, StatusTone } from "@/components/StatusBadge";
-import { api, Job, TestRun, TestRunProgress } from "@/lib/api";
-import { subscribeTestRun, subscribeJobs } from "@/lib/realtime";
 import { useAuth } from "@/context/AuthContext";
+import { useTestRun } from "@/hooks/useTestRun";
 
-// Color code every chunk in the Test Matrix by its current state.
 function matrixTone(status: string): StatusTone {
   switch (status) {
     case "completed":
@@ -47,7 +46,7 @@ const MATRIX_TONES: Record<StatusTone, string> = {
   neutral: "bg-neutral-900 border-neutral-800 text-neutral-500",
 };
 
-function matrixClassName(job: Job): string {
+function matrixClassName(job: { status: string }): string {
   const tone = matrixTone(job.status);
   return `${MATRIX_TONES[tone]} ${job.status === "running" || job.status === "uploading_artifacts" ? "animate-pulse" : ""}`;
 }
@@ -70,70 +69,12 @@ export default function TestRunDetailPage() {
   const params = useParams<{ id: string }>();
   const runId = Number(params.id);
   const router = useRouter();
-  const { token, loading } = useAuth();
-  const [run, setRun] = useState<TestRun | null>(null);
-  const [progress, setProgress] = useState<TestRunProgress | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, token } = useAuth();
+  const { run, progress, jobs, connectionState, error } = useTestRun(runId);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
-
-  // Jobs + run metadata refresh every 5s (plus realtime job events).
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const res = await api.getTestRun(token, runId);
-        if (!cancelled) setRun(res.test_run);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load test run.");
-      }
-    };
-
-    load();
-    const timer = setInterval(load, 5000);
-    const unsubscribe = subscribeJobs(token, () => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      unsubscribe();
-    };
-  }, [token, runId]);
-
-  // Live counters refresh every 2s (cheap snapshot, no job rows) so the
-  // distributed execution view stays current between job-list refreshes.
-  // Realtime progress snapshots refresh instantly instead.
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const res = await api.getTestRunProgress(token, runId);
-        if (!cancelled) setProgress(res.test_run);
-      } catch {
-        // Ignore transient progress-poll failures; the 5s run poll covers us.
-      }
-    };
-
-    load();
-    const timer = setInterval(load, 2000);
-    const unsubscribe = subscribeTestRun(token, runId, () => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      unsubscribe();
-    };
-  }, [token, runId]);
 
   if (loading || !token) {
     return (
@@ -143,9 +84,6 @@ export default function TestRunDetailPage() {
     );
   }
 
-  const jobs = run?.jobs ?? [];
-
-  // Live view prefers the 2s progress snapshot and falls back to the 5s run.
   const live = progress ?? run;
   const runStatus: string = live?.status ?? run?.status ?? "queued";
 
@@ -182,7 +120,6 @@ export default function TestRunDetailPage() {
         </div>
       ) : (
         <>
-          {/* Header */}
           <div className="mb-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -206,6 +143,10 @@ export default function TestRunDetailPage() {
                       {run.test_suite.name}
                     </span>
                   )}
+                  <span className={`inline-flex items-center gap-1.5 text-xs ${connectionState === "connected" ? "text-emerald-400" : "text-amber-400"}`}>
+                    <Radio className="w-3 h-3" />
+                    {connectionState === "connected" ? "Live" : connectionState === "connecting" ? "Connecting" : "Disconnected"}
+                  </span>
                 </p>
               </div>
               <StatusBadge
@@ -215,12 +156,13 @@ export default function TestRunDetailPage() {
             </div>
           </div>
 
-          {/* Progress + summary */}
           <div className="grid lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2 rounded-xl glass-panel p-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">Progress</p>
-                <span className="text-xs text-neutral-500">Live · refreshes every 2s</span>
+                <span className="text-xs text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live · WebSocket
+                </span>
               </div>
               <ProgressBar value={live?.progress_percentage ?? run.progress_percentage} />
               <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -282,7 +224,6 @@ export default function TestRunDetailPage() {
             </div>
           </div>
 
-          {/* Test Matrix */}
           <div className="rounded-xl glass-panel p-5 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold">Test Matrix</h2>
@@ -323,7 +264,6 @@ export default function TestRunDetailPage() {
             )}
           </div>
 
-          {/* Job list */}
           <div className="rounded-xl glass-panel overflow-hidden">
             <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Jobs</h2>
@@ -360,10 +300,7 @@ export default function TestRunDetailPage() {
                         </td>
                         <td className="px-5 py-3.5 text-neutral-400 tabular-nums">{job.test_count}</td>
                         <td className="px-5 py-3.5">
-                          <StatusBadge
-                            status={job.status}
-                            pulse={job.status === "running"}
-                          />
+                          <StatusBadge status={job.status} pulse={job.status === "running"} />
                         </td>
                         <td className="px-5 py-3.5 text-neutral-400 font-mono text-xs">{job.worker_id ?? "—"}</td>
                         <td className="px-5 py-3.5 text-neutral-400 tabular-nums">{job.retry_count}</td>

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { RealtimeProvider } from "@/context/RealtimeContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { Toaster } from "sonner";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -35,7 +37,21 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <RealtimeProvider>
+              {children}
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  style: {
+                    background: "rgba(10,10,10,0.9)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#fff",
+                  },
+                }}
+              />
+            </RealtimeProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

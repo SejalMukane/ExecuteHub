@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
-  RefreshCw,
   Cpu,
   MemoryStick,
   Activity,
@@ -13,15 +12,15 @@ import {
   HardDrive,
   Play,
   Clock,
+  Radio,
 } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import StatusBadge, { StatusTone } from "@/components/StatusBadge";
-import { api, Worker, WorkerCounts, WorkerPoolResponse } from "@/lib/api";
-import { subscribeWorkers } from "@/lib/realtime";
+import { useWorkers, useConnectionState } from "@/context/RealtimeContext";
 import { useAuth } from "@/context/AuthContext";
 
 const COUNT_CARDS: {
-  key: keyof WorkerCounts;
+  key: "total" | "idle" | "busy" | "offline";
   label: string;
   tone: StatusTone;
 }[] = [
@@ -47,8 +46,6 @@ const TEXT_CLASSES: Record<StatusTone, string> = {
   neutral: "text-neutral-300",
 };
 
-// Worker health colors: idle (ready) = green, busy (working) = yellow,
-// offline (down) = red. Mirrors StatusBadge but with worker semantics.
 function workerTone(status: string): StatusTone {
   switch (status) {
     case "idle":
@@ -87,42 +84,28 @@ function usageBar(value: number | null) {
 
 export default function WorkersPage() {
   const router = useRouter();
-  const { token, loading } = useAuth();
-  const [data, setData] = useState<WorkerPoolResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, token } = useAuth();
+  const { workers } = useWorkers();
+  const connectionState = useConnectionState();
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
     if (!loading && !token) router.replace("/login");
   }, [loading, token, router]);
 
   useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
+    const timer = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-    const load = async () => {
-      try {
-        const res = await api.listWorkers(token);
-        if (!cancelled) setData(res);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load workers.");
-      }
+  const counts = useMemo(() => {
+    return {
+      total: workers.length,
+      idle: workers.filter((w) => w.status === "idle").length,
+      busy: workers.filter((w) => w.status === "busy").length,
+      offline: workers.filter((w) => w.status === "offline").length,
     };
-
-    load();
-    const timer = setInterval(load, 5000);
-
-    // Realtime: heartbeats/offline/online arrive on the workers stream — refresh
-    // instantly instead of waiting for the next poll.
-    const unsubscribe = subscribeWorkers(token, () => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      unsubscribe();
-    };
-  }, [token]);
+  }, [workers]);
 
   if (loading || !token) {
     return (
@@ -132,39 +115,28 @@ export default function WorkersPage() {
     );
   }
 
-  const workers: Worker[] = data?.workers ?? [];
-  const counts = data?.counts;
-
   return (
     <DashboardShell active="workers">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Worker Pool</h1>
           <p className="text-sm text-neutral-400 mt-1">
-            Health of the distributed execution fleet. Workers beat a heartbeat
-            every 5s; a worker silent for 15s is marked Offline.
+            Health of the distributed execution fleet. Updates are pushed live
+            over WebSockets.
           </p>
         </div>
         <span className="text-xs text-neutral-500 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <RefreshCw className="w-3.5 h-3.5" /> Polls every 5s
+          <span className={`inline-flex items-center gap-1.5 ${connectionState === "connected" ? "text-emerald-400" : "text-amber-400"}`}>
+            <Radio className="w-3.5 h-3.5" />
+            {connectionState === "connected" ? "Live" : connectionState === "connecting" ? "Connecting" : "Disconnected"}
           </span>
         </span>
       </div>
 
-      {error && (
-        <div className="mb-6 px-4 py-3 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Pool summary */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {COUNT_CARDS.map((card) => {
-          const value = counts ? counts[card.key] : null;
+          const value = counts[card.key];
           return (
             <div
               key={card.key}
@@ -175,7 +147,7 @@ export default function WorkersPage() {
                 <span className="text-sm text-neutral-400 font-medium">{card.label}</span>
               </div>
               <span className={`text-3xl font-bold tracking-tight tabular-nums ${TEXT_CLASSES[card.tone]}`}>
-                {value ?? "—"}
+                {value}
               </span>
             </div>
           );
@@ -203,8 +175,8 @@ export default function WorkersPage() {
                   worker.status === "offline"
                     ? "border-red-500/30"
                     : worker.status === "busy"
-                      ? "border-amber-500/30"
-                      : "border-neutral-800"
+                    ? "border-amber-500/30"
+                    : "border-neutral-800"
                 }`}
               >
                 <div className="flex items-center justify-between mb-4">
@@ -216,7 +188,7 @@ export default function WorkersPage() {
                       <p className="font-semibold tracking-tight">{worker.worker_name}</p>
                       <p className="text-xs text-neutral-500 flex items-center gap-1">
                         <Activity className="w-3 h-3" />
-                        heartbeat {relativeTime(worker.last_seen_at)}
+                        heartbeat {relativeTime(worker.heartbeat_at)}
                       </p>
                     </div>
                   </div>
@@ -244,6 +216,9 @@ export default function WorkersPage() {
                       <Box className="w-3 h-3 shrink-0" />
                       <span className="truncate">{job.container_id ?? "—"}</span>
                     </div>
+                    <p className="text-xs text-neutral-400 mt-1.5">
+                      Browser: {worker.browser ?? "Chrome"} · Container: {worker.container_status ?? "—"}
+                    </p>
                   </div>
                 ) : (
                   <div className="mb-4 p-3 rounded-lg border border-neutral-900 bg-black/20 text-xs text-neutral-500">

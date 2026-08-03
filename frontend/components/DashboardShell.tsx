@@ -15,8 +15,10 @@ import {
   Cpu,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useConnectionState } from "@/context/RealtimeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import BackgroundBlobs from "@/components/BackgroundBlobs";
+import ConnectionBanner from "@/components/ConnectionBanner";
 import { avatarUrl, getInitials, readAvatarStyle } from "@/lib/avatar";
 
 export type NavKey =
@@ -48,6 +50,7 @@ export default function DashboardShell({
   const router = useRouter();
   const { user, logout } = useAuth();
   const [avatarStyle, setAvatarStyle] = useState<string | null>(null);
+  const connectionState = useConnectionState();
 
   useEffect(() => {
     setAvatarStyle(readAvatarStyle());
@@ -74,13 +77,19 @@ export default function DashboardShell({
 
       <div className="relative z-10 min-h-screen">
         {/* Top bar */}
-        <header className="h-16 glass-header sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="hidden sm:flex items-center gap-2.5 text-xs text-neutral-500">
+      <ConnectionBanner />
+
+      <header className="h-16 glass-header sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="font-bold tracking-tight text-base">ExecuteHub</Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={`inline-flex items-center gap-1.5 text-xs ${connectionState === "connected" ? "text-emerald-400" : "text-amber-400"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${connectionState === "connected" ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              {connectionState === "connected" ? "Live" : connectionState === "connecting" ? "Connecting" : "Disconnected"}
+            </span>
+            <span className="hidden sm:flex items-center gap-2.5 text-xs text-neutral-500">
                 {avatarStyle ? (
                   <img
                     src={avatarUrl(avatarStyle, user?.email ?? user?.name ?? "user")}

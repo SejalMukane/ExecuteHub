@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Rocket, GitBranch, RefreshCw } from "lucide-react";
+import { Loader2, Rocket, GitBranch, Radio } from "lucide-react";
 import DashboardShell from "@/components/DashboardShell";
 import StatusBadge, { ProgressBar } from "@/components/StatusBadge";
 import { api, TestRun } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useConnectionState, useDashboard } from "@/context/RealtimeContext";
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "—";
@@ -21,6 +22,8 @@ function relativeTime(iso: string | null): string {
 export default function TestRunsPage() {
   const router = useRouter();
   const { token, loading } = useAuth();
+  const connectionState = useConnectionState();
+  const { testRuns } = useDashboard();
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,19 +38,45 @@ export default function TestRunsPage() {
     const load = async () => {
       try {
         const res = await api.listTestRuns(token);
-        if (!cancelled) setRuns(res.test_runs);
+        if (cancelled) return;
+        setRuns(res.test_runs);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load test runs.");
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "Failed to load test runs.");
       }
     };
 
     load();
-    const timer = setInterval(load, 5000);
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
     };
   }, [token]);
+
+  // Merge live progress snapshots from the dashboard stream without polling.
+  const liveRuns = useMemo(() => {
+    const byId = new Map(runs.map((r) => [r.id, r]));
+    Object.values(testRuns).forEach((live) => {
+      const existing = byId.get(live.id);
+      if (existing) {
+        byId.set(live.id, {
+          ...existing,
+          status: live.status as TestRun["status"],
+          progress_percentage: live.progress_percentage,
+          completed_jobs: live.completed_jobs,
+          running_jobs: live.running_jobs,
+          queued_jobs: live.queued_jobs,
+          failed_jobs: live.failed_jobs,
+          passed_tests: live.passed_tests,
+          failed_tests: live.failed_tests,
+          total_duration_ms: live.total_duration_ms,
+          started_at: live.started_at,
+          finished_at: live.finished_at,
+        });
+      }
+    });
+    return Array.from(byId.values()).sort((a, b) => b.id - a.id);
+  }, [runs, testRuns]);
 
   if (loading || !token) {
     return (
@@ -67,7 +96,10 @@ export default function TestRunsPage() {
           </p>
         </div>
         <span className="text-xs text-neutral-500 flex items-center gap-1.5">
-          <RefreshCw className="w-3.5 h-3.5" /> Auto-refreshing every 5s
+          <span className={`inline-flex items-center gap-1.5 ${connectionState === "connected" ? "text-emerald-400" : "text-amber-400"}`}>
+            <Radio className="w-3.5 h-3.5" />
+            {connectionState === "connected" ? "Live" : connectionState === "connecting" ? "Connecting" : "Disconnected"}
+          </span>
         </span>
       </div>
 
@@ -80,10 +112,10 @@ export default function TestRunsPage() {
       <div className="rounded-xl glass-panel overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-900 flex items-center justify-between">
           <h2 className="text-sm font-semibold">All Runs</h2>
-          <span className="text-xs text-neutral-500">{runs.length} total</span>
+          <span className="text-xs text-neutral-500">{liveRuns.length} total</span>
         </div>
 
-        {runs.length === 0 ? (
+        {liveRuns.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <Rocket className="w-8 h-8 text-neutral-600 mx-auto mb-3" />
             <p className="text-sm text-neutral-500">
@@ -105,7 +137,7 @@ export default function TestRunsPage() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((run) => (
+                {liveRuns.map((run) => (
                   <tr
                     key={run.id}
                     className="border-b border-neutral-900/50 hover:bg-neutral-900/20 transition-colors cursor-pointer"
