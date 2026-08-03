@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe TestRunsChannel, type: :channel do
+RSpec.describe TestRunChannel, type: :channel do
   let(:user) { create(:user) }
   let(:test_run) { create(:test_run) }
 
