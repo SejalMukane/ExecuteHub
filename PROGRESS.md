@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 2 August 2026 (Week 5 complete — distributed execution)
+**Last updated:** 4 August 2026 (Week 6 complete — real-time mission control dashboard)
 ---
 
 ## Project Overview
@@ -602,7 +602,61 @@ bundle exec rspec   # 118 examples, 0 failures
 
 ---
 
-## Infrastructure Decisions
+## Week 6 — Real-Time Mission Control Dashboard
+
+**Status:** ✅ Complete
+
+**Goal:** Transform the frontend into a live Mission Control dashboard that streams worker, queue, test-run and metrics updates via Action Cable without polling.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Real-time channels | `DashboardChannel`, `QueueChannel`, `WorkerChannel`, `TestRunChannel` (replaced earlier `WorkersChannel`/`TestRunsChannel`) | ✅ Done |
+| Centralized broadcaster | `DashboardEventService` is the single source of all real-time messages; all services call it instead of `RealtimeBroadcaster` | ✅ Done |
+| Live metrics services | `DashboardMetrics` (runs, jobs, workers, success rate, duration, history) + `QueueMetrics` (depth, latency, throughput) | ✅ Done |
+| Metrics broadcast driver | `HeartbeatWorker` broadcasts a full `metrics_updated` snapshot every pass; `DashboardChannel` also sends it on subscribe | ✅ Done |
+| Event wiring | `WorkerExecutor`, `TestRunProgressUpdater`, `HeartbeatService`, `WorkerRegistry`, `TestScheduler`, `ResultAggregator` all broadcast relevant events through `DashboardEventService` | ✅ Done |
+| Test coverage | Backend specs for `DashboardEventService`, `DashboardMetrics`, `QueueMetrics`, `DashboardChannel`, `WorkerChannel`, `QueueChannel` | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Real-time context | `RealtimeContext` / `RealtimeProvider` — single Action Cable consumer, shared state reducer, toast notifications, connection banner | ✅ Done |
+| Reusable hooks | `useDashboard`, `useWorkers`, `useQueue`, `useTestRun` | ✅ Done |
+| Live pages | `/dashboard`, `/workers`, `/queue`, `/test-runs`, `/test-runs/[id]` all subscribe to channels and re-render on events | ✅ Done |
+| Connection UI | `ConnectionBanner` — fixed top banner for connecting/disconnected states | ✅ Done |
+| Notifications | `sonner` toasts for worker online/offline, test run start/complete, job failures, artifact uploads | ✅ Done |
+| Dashboard charts | `recharts` AreaChart of test run history updated every metrics broadcast | ✅ Done |
+| Worker/Queue cards | Live worker health cards and queue depth/latency/throughput stats | ✅ Done |
+| Test run matrix | Chunk grid color-coded by job state with real-time updates | ✅ Done |
+| Testing | Jest 30 + jsdom + React Testing Library; `__mocks__` for `@rails/actioncable` and `@/lib/api`; 11 passing tests | ✅ Done |
+
+### Deliverable
+
+✅ The dashboard and all related pages update live as workers register, heartbeat, go offline, jobs run, and test runs progress. No polling is required for the real-time sections; the frontend displays connection state and toasts key events.
+
+### Testing
+
+- **RSpec (251 examples, 0 failures)** — includes new real-time service + channel specs.
+- **Frontend** — `npm test`: 3 suites, 11 tests passing; `npx tsc --noEmit` clean; `npm run build` succeeds (12 routes).
+
+### Key Files — Real-Time
+
+- `backend/app/channels/dashboard_channel.rb`, `queue_channel.rb`, `worker_channel.rb`, `test_run_channel.rb`
+- `backend/app/services/dashboard_event_service.rb`
+- `backend/app/services/dashboard_metrics.rb`, `queue_metrics.rb`
+- `backend/app/workers/heartbeat_worker.rb`
+- `frontend/context/RealtimeContext.tsx`
+- `frontend/hooks/useTestRun.ts`
+- `frontend/components/ConnectionBanner.tsx`
+- `frontend/app/dashboard/page.tsx`, `frontend/app/workers/page.tsx`, `frontend/app/queue/page.tsx`, `frontend/app/test-runs/page.tsx`, `frontend/app/test-runs/[id]/page.tsx`
+- `frontend/lib/realtime.ts`
+- `frontend/__tests__/`, `frontend/__mocks__/`, `frontend/test-utils/`, `frontend/jest.config.js`, `frontend/jest.setup.js`
+
+---
+
 
 | Item | Choice | Notes |
 |------|--------|-------|
@@ -677,7 +731,8 @@ Open `http://localhost:3000` → register → dashboard.
 - [x] Week 3 — Test Scheduling & Queueing ✅ (TestRun + Job models, chunking scheduler, Redis/Sidekiq `test_execution` queue, log-only worker, progress tracking, Test Runs + Queue API, Run Test UI, Test Runs + Queue pages, RSpec coverage)
 - [x] Week 4 — Real Browser Execution in Docker ✅ (Playwright runner + Dockerfile, DockerService + WorkerExecutor, real execution in isolated containers, ExecutionLog + Artifact models + ArtifactStore, report parser, Jobs/Artifacts APIs, Workers page, RSpec + smoke coverage)
 - [ ] Session history, idle cleanup, reports
-- [ ] ActionCable real-time session status
+- [x] Week 6 — Real-Time Mission Control Dashboard ✅ (Action Cable channels, DashboardEventService, live metrics, React RealtimeContext/hooks, live pages, connection banner, toasts, Jest tests)
+- [ ] Session history, idle cleanup, reports
 - [ ] Docker Compose local stack
 - [ ] Kubernetes + Jenkins + AWS deployment
 - [ ] Prometheus/Grafana monitoring
