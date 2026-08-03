@@ -62,6 +62,7 @@ class ResultAggregator
       @test_run.update!(counts)
       log("Summary generated: #{counts[:passed_tests]} passed, #{counts[:failed_tests]} failed, " \
           "#{counts[:total_screenshots]} screenshots, #{counts[:total_videos]} videos")
+      DashboardEventService.test_run_completed(@test_run)
     end
   end
 

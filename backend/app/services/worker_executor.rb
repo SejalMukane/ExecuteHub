@@ -57,7 +57,7 @@ class WorkerExecutor
   def execute
     container = nil
     job.mark_running!(worker_name: worker&.worker_name)
-    RealtimeBroadcaster.job_started(job)
+    DashboardEventService.job_started(job)
     log(:info, "Starting execution for Job ##{job.id}")
 
     container = create_container
@@ -115,6 +115,8 @@ class WorkerExecutor
 
     persist_summary
     persist_artifacts
+    artifact_count = job.artifacts.count
+    DashboardEventService.artifacts_uploaded(job, artifact_count) if artifact_count.positive?
 
     log(:info, "Execution summary: #{@summary[:passed]} passed, #{@summary[:failed]} failed")
   rescue DockerService::DockerError, Errno::ENOENT => e
@@ -133,6 +135,7 @@ class WorkerExecutor
       )
       job.mark_completed!
       log(:info, "Execution finished")
+      DashboardEventService.job_completed(job)
     else
       # Assertion / browser test failures are NOT retried — they fail now.
       job.update!(
@@ -144,10 +147,10 @@ class WorkerExecutor
       )
       job.mark_failed!
       log(:warn, "Execution finished with test failures")
+      DashboardEventService.job_failed(job)
     end
 
     TestRunProgressUpdater.call(job.test_run)
-    RealtimeBroadcaster.job_finished(job)
   end
 
   def job_succeeded?
@@ -176,9 +179,9 @@ class WorkerExecutor
     log(:error, "Job failed: #{error.message}")
     JobRetrier.call(job, error)
     TestRunProgressUpdater.call(job.test_run)
-    # Only terminal failures broadcast "finished" — a retried job will start
+    # Only terminal failures broadcast "job_failed" — a retried job will start
     # again (and broadcast job_started) once it is re-dispatched.
-    RealtimeBroadcaster.job_finished(job) if job.failed?
+    DashboardEventService.job_failed(job) if job.failed?
   end
 
   def persist_summary

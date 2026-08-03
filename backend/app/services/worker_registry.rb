@@ -28,7 +28,8 @@ class WorkerRegistry
         memory_usage: memory_usage
       )
       worker.save!
-      RealtimeBroadcaster.worker_online(worker)
+      DashboardEventService.worker_registered(worker) if worker.previously_new_record?
+      DashboardEventService.worker_online(worker)
       worker
     end
 

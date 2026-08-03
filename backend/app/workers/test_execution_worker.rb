@@ -43,8 +43,11 @@ class TestExecutionWorker
     # Safety net for failures that escape WorkerExecutor (e.g. DB down).
     Rails.logger.error("[TestExecutionWorker] Job ##{job_id} failed: #{e.message}")
     job = Job.find_by(id: job_id)
-    job&.mark_failed!
-    TestRunProgressUpdater.call(job.test_run) if job&.test_run
+    if job
+      job.mark_failed!
+      DashboardEventService.job_failed(job)
+      TestRunProgressUpdater.call(job.test_run)
+    end
     raise
   end
 end

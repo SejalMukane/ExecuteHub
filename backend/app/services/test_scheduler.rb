@@ -45,6 +45,9 @@ class TestScheduler
       progress_percentage: 0.0
     )
 
+    DashboardEventService.test_run_started(@test_run)
+    DashboardEventService.queue_updated
+
     log("#{jobs.size} Jobs created and queued for TestRun ##{@test_run.id}")
     @test_run
   end
@@ -66,6 +69,7 @@ class TestScheduler
         test_count: test_count,
         status: :queued
       )
+      DashboardEventService.job_created(job)
       log("Job ##{job.id} created (chunk #{job.chunk_number}, #{job.test_count} tests)")
       job
     end
