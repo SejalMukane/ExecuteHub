@@ -135,6 +135,25 @@ class DashboardEventService
       broadcast("dashboard", payload)
     end
 
+    def broadcast_metrics
+      metrics = DashboardMetrics.call
+      queue = QueueMetrics.call
+      broadcast_dashboard(:metrics_updated, {
+        metrics: metrics,
+        queue: queue
+      })
+    rescue StandardError => e
+      Rails.logger.warn("[DashboardEventService] Metrics broadcast failed: #{e.message}")
+    end
+
+    def metrics_snapshot
+      {
+        type: :metrics_updated,
+        metrics: DashboardMetrics.call,
+        queue: QueueMetrics.call
+      }
+    end
+
     def broadcast_dashboard(kind, payload = {})
       broadcast("dashboard", { type: kind, **payload })
     end

@@ -27,6 +27,7 @@ class HeartbeatWorker
       beat_all_workers
       offline = HeartbeatService.mark_stale_workers_offline!
       Rails.logger.info("[HeartbeatWorker] Pass complete (#{offline} workers went offline)")
+      DashboardEventService.broadcast_metrics
     ensure
       release_lock
     end

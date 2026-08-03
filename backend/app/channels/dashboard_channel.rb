@@ -3,5 +3,6 @@
 class DashboardChannel < ApplicationCable::Channel
   def subscribed
     stream_from "dashboard"
+    transmit DashboardEventService.metrics_snapshot
   end
 end

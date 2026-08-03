@@ -10,6 +10,7 @@ RSpec.describe HeartbeatWorker, type: :worker do
       allow(Sidekiq).to receive(:redis).and_yield(redis)
 
       allow(HeartbeatWorker).to receive(:perform_in)
+      allow(DashboardEventService).to receive(:broadcast_metrics)
     end
 
     it "ensures the worker pool exists" do
