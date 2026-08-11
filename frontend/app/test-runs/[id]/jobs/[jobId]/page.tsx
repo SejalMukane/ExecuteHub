@@ -209,7 +209,7 @@ export default function JobDetailPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = artifact.path.split("/").pop() ?? "trace.zip";
+      anchor.download = artifact.file_name ?? "trace.zip";
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -498,7 +498,7 @@ function ArtifactsTab({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={artifactUrls[a.id]}
-                    alt={a.path}
+                    alt={a.file_name}
                     className="w-full aspect-video object-contain bg-black"
                   />
                 ) : (
@@ -507,8 +507,8 @@ function ArtifactsTab({
                   </div>
                 )}
                 <div className="px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="text-neutral-500 truncate">{a.path.split("/").pop()}</span>
-                  <span className="text-neutral-600 tabular-nums">{formatBytes(a.size)}</span>
+                  <span className="text-neutral-500 truncate">{a.file_name}</span>
+                  <span className="text-neutral-600 tabular-nums">{formatBytes(a.file_size)}</span>
                 </div>
               </div>
             ))}
@@ -530,8 +530,8 @@ function ArtifactsTab({
                   </div>
                 )}
                 <div className="px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="text-neutral-500 truncate">{a.path.split("/").pop()}</span>
-                  <span className="text-neutral-600 tabular-nums">{formatBytes(a.size)}</span>
+                  <span className="text-neutral-500 truncate">{a.file_name}</span>
+                  <span className="text-neutral-600 tabular-nums">{formatBytes(a.file_size)}</span>
                 </div>
               </div>
             ))}
@@ -549,8 +549,8 @@ function ArtifactsTab({
                 className="flex items-center justify-between rounded-lg border border-neutral-900 px-4 py-3"
               >
                 <div>
-                  <p className="text-sm text-neutral-200 font-mono">{a.path.split("/").pop()}</p>
-                  <p className="text-xs text-neutral-500 tabular-nums">{formatBytes(a.size)}</p>
+                  <p className="text-sm text-neutral-200 font-mono">{a.file_name}</p>
+                  <p className="text-xs text-neutral-500 tabular-nums">{formatBytes(a.file_size)}</p>
                 </div>
                 <button
                   onClick={() => onDownloadTrace(a)}

@@ -13,6 +13,8 @@ import {
   Rocket,
   Timer,
   Cpu,
+  Image as ImageIcon,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useConnectionState } from "@/context/RealtimeContext";
@@ -25,6 +27,8 @@ export type NavKey =
   | "dashboard"
   | "projects"
   | "test-runs"
+  | "artifacts"
+  | "analytics"
   | "queue"
   | "workers"
   | "sessions"
@@ -34,6 +38,8 @@ const NAV_ITEMS: { label: string; href: string; key: NavKey; icon: typeof Layout
   { label: "Dashboard", href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", key: "projects", icon: FolderKanban },
   { label: "Test Runs", href: "/test-runs", key: "test-runs", icon: Rocket },
+  { label: "Artifacts", href: "/artifacts", key: "artifacts", icon: ImageIcon },
+  { label: "Analytics", href: "/analytics", key: "analytics", icon: BarChart3 },
   { label: "Queue", href: "/queue", key: "queue", icon: Timer },
   { label: "Workers", href: "/workers", key: "workers", icon: Cpu },
   { label: "Browser Sessions", href: "/dashboard#sessions", key: "sessions", icon: Server },

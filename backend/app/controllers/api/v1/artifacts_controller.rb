@@ -17,7 +17,18 @@ module Api
     class ArtifactsController < ApplicationController
       include Authenticatable
 
-      before_action :set_artifact
+      before_action :set_artifact, except: [:index]
+
+      # GET /artifacts — the caller's recent artifacts across their projects,
+      # newest first. Used by the global artifacts page.
+      def index
+        artifacts = Artifact
+          .where(job: visible_jobs)
+          .order(created_at: :desc)
+          .limit(200)
+
+        render json: { artifacts: artifacts.map { |artifact| artifact_response(artifact) } }
+      end
 
       def show
         render json: { artifact: artifact_response(@artifact) }

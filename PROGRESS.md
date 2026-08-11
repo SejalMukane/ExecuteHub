@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 4 August 2026 (Week 6 complete — real-time mission control dashboard)
+**Last updated:** 12 August 2026 (Week 7 complete — S3 artifact storage, test reporting & analytics)
 ---
 
 ## Project Overview
@@ -657,9 +657,56 @@ bundle exec rspec   # 118 examples, 0 failures
 
 ---
 
+## Week 7 — S3 Artifact Storage, Test Reporting & Analytics
 
-| Item | Choice | Notes |
-|------|--------|-------|
+**Status:** ✅ Complete
+
+**Goal:** Move artifact binaries to AWS S3 (metadata stays in PostgreSQL), generate per-run test reports with results/stack traces/logs, compute analytics, expose signed-URL + artifact APIs, and build the frontend viewer, failure-debugging and analytics pages.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| S3 storage service | `S3StorageService` — upload/download/delete/signed URLs via AWS SDK, bucket from env; local disk fallback (`storage_backend: "local"`) when S3 env vars are absent | ✅ Done |
+| Artifact metadata in PG only | `artifacts` table stores metadata (type, file_name, s3_key, content_type, file_size, checksum, status, storage_backend); binaries never touch PostgreSQL | ✅ Done |
+| Upload worker + retry | `ArtifactUploader` (abstraction: controllers/workers never touch S3 internals) + `ArtifactUploadWorker` on a dedicated `artifacts` Sidekiq queue; failed uploads retryable via `retry` endpoint | ✅ Done |
+| Artifact lifecycle | `uploading_artifacts` job state; `artifact_cleanup_job` deletes stale/pending/abandoned artifacts from S3 + DB | ✅ Done |
+| Test results | `TestResult` model (status, duration, browser, worker, error message, stack trace, retries, timestamps) persisted by `TestResultBuilder` during aggregation | ✅ Done |
+| Test reports | `TestReport` per run (totals, passed/failed/skipped/flaky, duration, success rate) generated idempotently by `ResultAggregator` | ✅ Done |
+| Analytics | `TestAnalyticsService` — overview (rates, durations, retry/utilization, run counts) + history (success/failure over time, duration, tests/day, most-failing tests/suites), `days` clamped 1..365 | ✅ Done |
+| Artifact APIs | `GET /artifacts` (index, latest 200), `GET /artifacts/:id`, `GET /artifacts/:id/url` (signed URL), `GET /artifacts/:id/file` (stream, redirects for S3), `DELETE /artifacts/:id`, `POST /artifacts/:id/retry` | ✅ Done |
+| Report/results/analytics APIs | `GET /test_runs/:id/report`, `GET /test_runs/:id/results`, `GET /test_runs/:id/analytics`, `GET /test_results/:id` (detail + stack trace + artifacts + logs), `GET /analytics`, `GET /projects/:id/analytics` | ✅ Done |
+| Realtime events | `artifact_upload_started/uploaded/failed`, `report_generated`, `test_result_completed`, `test_run_analytics_updated` broadcast via `DashboardEventService` | ✅ Done |
+| Migrations | `artifacts` (status/storage_backend/s3_key/checksum/content_type), `test_results`, `test_reports` (unique per run) | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| API client + types | Week-7 types (`Artifact`, `TestReport`, `TestResult`, `AnalyticsResponse`, …) and client functions for all new endpoints in `lib/api.ts` | ✅ Done |
+| Realtime types | Artifact/report/result/analytics event interfaces + dispatch handlers in `RealtimeContext` (toasts + activity feed) | ✅ Done |
+| Artifacts pages | `/artifacts` (type-filtered list, download/delete/retry) + `/artifacts/[id]` viewer (screenshot image, video player, trace/log/report iframe, metadata) | ✅ Done |
+| Report page | `/test-runs/[id]/report` — success rate, stat tiles, failed-tests list, results table, live refresh on `report_generated`/`test_result_completed` | ✅ Done |
+| Failure debugging | `/test-runs/[id]/results/[resultId]` — error message + stack trace, worker/browser/retries, screenshots/videos, downloadable artifacts, job logs | ✅ Done |
+| Analytics | `/analytics` + `/projects/[id]/analytics` with 7/14/30/90-day ranges; recharts success/failure/duration/tests-per-day charts + most-failing tests/suites + overview tiles | ✅ Done |
+| Navigation | DashboardShell gains **Artifacts** + **Analytics** items; project page gains an Analytics button | ✅ Done |
+
+### Testing
+
+- **Backend RSpec — 355 examples, 0 failures** (352 before the artifacts-index addition, +3 in the index specs).
+- **Frontend** — `npm test`: 3 suites, 11 tests passing; `npx next build` succeeds (19 routes incl. report/artifacts/analytics/results).
+
+### Key Files — Week 7
+
+- `backend/app/services/s3_storage_service.rb`, `artifact_uploader.rb`, `artifact_cleanup_service.rb`, `test_result_builder.rb`, `test_analytics_service.rb`
+- `backend/app/workers/artifact_upload_worker.rb`, `artifact_cleanup_job.rb`
+- `backend/app/controllers/api/v1/artifacts_controller.rb`, `test_results_controller.rb`, `analytics_controller.rb`, `test_runs_controller.rb` (report/results/analytics)
+- `backend/db/migrate/*_create_artifacts.rb`, `*_create_test_results.rb`, `*_create_test_reports.rb`
+- `frontend/app/artifacts/`, `frontend/app/analytics/`, `frontend/app/projects/[id]/analytics/`, `frontend/app/test-runs/[id]/report/`, `frontend/app/test-runs/[id]/results/[resultId]/`
+- `frontend/components/AnalyticsDashboard.tsx`
+- `frontend/lib/api.ts`, `frontend/lib/realtime.ts`, `frontend/context/RealtimeContext.tsx`, `frontend/components/DashboardShell.tsx`
+
+---
 | Ruby version | 3.3.11 | Installed via winget (`C:\Ruby33-x64`) |
 | Rails version | 8.1.3.1 | API-only mode |
 | Database | PostgreSQL 16.14 | Runs in Docker container `executehub-postgres` |
@@ -730,8 +777,8 @@ Open `http://localhost:3000` → register → dashboard.
 - [x] Week 2 — GitHub Integration & Project Management ✅ (GitHub OAuth, repo connection flow, webhook registration + signature verification, repo metadata storage, Connect GitHub button, repo selection UI, project settings page, repository info page)
 - [x] Week 3 — Test Scheduling & Queueing ✅ (TestRun + Job models, chunking scheduler, Redis/Sidekiq `test_execution` queue, log-only worker, progress tracking, Test Runs + Queue API, Run Test UI, Test Runs + Queue pages, RSpec coverage)
 - [x] Week 4 — Real Browser Execution in Docker ✅ (Playwright runner + Dockerfile, DockerService + WorkerExecutor, real execution in isolated containers, ExecutionLog + Artifact models + ArtifactStore, report parser, Jobs/Artifacts APIs, Workers page, RSpec + smoke coverage)
-- [ ] Session history, idle cleanup, reports
 - [x] Week 6 — Real-Time Mission Control Dashboard ✅ (Action Cable channels, DashboardEventService, live metrics, React RealtimeContext/hooks, live pages, connection banner, toasts, Jest tests)
+- [x] Week 7 — S3 Artifact Storage, Test Reporting & Analytics ✅ (S3StorageService + local fallback, artifact metadata in PG, upload worker + cleanup, TestResult/TestReport + analytics, artifact/report/results/analytics APIs, artifacts + report + failure-debug + analytics pages)
 - [ ] Session history, idle cleanup, reports
 - [ ] Docker Compose local stack
 - [ ] Kubernetes + Jenkins + AWS deployment

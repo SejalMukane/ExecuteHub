@@ -102,6 +102,42 @@ export interface ArtifactsEvent {
   worker_id: string | null;
 }
 
+export interface ArtifactEvent {
+  id: number;
+  job_id: number;
+  test_run_id: number;
+  artifact_type: string;
+  file_name: string | null;
+  size: number | null;
+  status: string;
+}
+
+export interface ReportEvent {
+  id: number;
+  test_run_id: number;
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  skipped_tests: number;
+  flaky_tests: number;
+  duration_ms: number;
+  success_rate: number;
+  generated_at: string;
+}
+
+export interface TestResultEvent {
+  id: number;
+  job_id: number;
+  test_run_id: number;
+  test_name: string;
+  suite_name: string | null;
+  status: string;
+  duration_ms: number;
+  browser: string | null;
+  error_message: string | null;
+  retry_count: number;
+}
+
 export interface ActivityEvent {
   id: string;
   text: string;
@@ -115,6 +151,11 @@ export type RealtimeMessage =
   | { type: "worker_registered" | "worker_heartbeat" | "worker_online" | "worker_offline"; worker: WorkerEvent }
   | { type: "queue_updated"; queue: QueueMetricsEvent }
   | { type: "artifacts_uploaded"; artifacts: ArtifactsEvent }
+  | { type: "artifact_upload_started" | "artifact_uploaded"; artifact: ArtifactEvent }
+  | { type: "artifact_failed"; error: string; artifact: ArtifactEvent }
+  | { type: "report_generated"; test_run_id: number; report: ReportEvent }
+  | { type: "test_result_completed"; test_result: TestResultEvent }
+  | { type: "test_run_analytics_updated"; test_run_id: number }
   | { type: "execution_finished"; test_run_id: number; project_name: string; status: string }
   | { type: "metrics_updated"; metrics: DashboardMetricsEvent; queue: QueueMetricsEvent };
 

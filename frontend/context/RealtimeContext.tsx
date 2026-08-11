@@ -53,18 +53,20 @@ function reducer(state: RealtimeState, action: Action): RealtimeState {
     case "SET_CONNECTION":
       return { ...state, connectionState: action.state };
     case "WORKER_EVENT": {
-      const workers = state.workers.filter(
+      const next = [...state.workers.filter(
         (w) => w.worker_name !== action.payload.worker_name
-      );
-      const index = workers.findIndex(
+      )];
+      const index = next.findIndex(
         (w) => w.worker_name > action.payload.worker_name
       );
       if (index === -1) {
-        workers.push(action.payload);
+        next.push(action.payload);
       } else {
-        workers.splice(index, 0, action.payload);
+        next.splice(index, 0, action.payload);
       }
-      return { ...state, workers };
+      // eslint-disable-next-line no-console
+      console.log("[RealtimeContext reducer] WORKER_EVENT -> workers.length:", next.length, next.map((w) => w.worker_name));
+      return { ...state, workers: next };
     }
     case "QUEUE_UPDATE":
       return { ...state, queue: action.payload };
@@ -138,9 +140,12 @@ function eventType(
     case "worker_online":
     case "worker_registered":
     case "artifacts_uploaded":
+    case "artifact_uploaded":
+    case "report_generated":
       return "success";
     case "job_failed":
     case "worker_offline":
+    case "artifact_failed":
     case "execution_finished":
       return "error";
     case "job_started":
@@ -151,6 +156,9 @@ function eventType(
     case "metrics_updated":
     case "worker_heartbeat":
     case "test_run_progress_updated":
+    case "artifact_upload_started":
+    case "test_result_completed":
+    case "test_run_analytics_updated":
     default:
       return "info";
   }
@@ -173,6 +181,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const onMessage = useCallback((message: RealtimeMessage) => {
+    // eslint-disable-next-line no-console
+    console.log("[RealtimeContext] received", message.type, message);
     switch (message.type) {
       case "worker_registered":
       case "worker_heartbeat":
@@ -272,6 +282,73 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             id: activityId(),
             text: `Execution finished for Test Run #${message.test_run_id}`,
             type: "success",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "artifact_upload_started":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Uploading artifact #${message.artifact.id} (${message.artifact.artifact_type})`,
+            type: "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "artifact_uploaded":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Artifact #${message.artifact.id} (${message.artifact.artifact_type}) uploaded`,
+            type: "success",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "artifact_failed":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Artifact #${message.artifact.id} upload failed: ${message.error}`,
+            type: "error",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        notify(`Artifact #${message.artifact.id} upload failed`, "error");
+        break;
+      case "report_generated":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Report for Test Run #${message.test_run_id} generated (${message.report.success_rate}% success)`,
+            type: "success",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "test_result_completed":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Test "${message.test_result.test_name}" ${message.test_result.status}`,
+            type: message.test_result.status === "failed" ? "error" : "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "test_run_analytics_updated":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Analytics refreshed for Test Run #${message.test_run_id}`,
+            type: "info",
             timestamp: new Date().toISOString(),
           },
         });

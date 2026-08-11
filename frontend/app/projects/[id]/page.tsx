@@ -26,6 +26,7 @@ import {
   Play,
   Rocket,
   Timer,
+  BarChart3,
 } from "lucide-react";
 import GithubIcon from "@/components/GithubIcon";
 import {
@@ -400,6 +401,13 @@ export default function ProjectDetailPage() {
                       Run Test
                     </button>
                   )}
+                  <Link
+                    href={`/projects/${projectId}/analytics`}
+                    className="px-4 py-2.5 border border-neutral-800 text-sm font-medium rounded-md hover:bg-white/5 transition-colors flex items-center gap-2 text-neutral-300"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Analytics
+                  </Link>
                   {github?.connected && (
                     <div className="flex items-center gap-2 px-3.5 py-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm">
                       <GithubIcon className="w-4 h-4" />

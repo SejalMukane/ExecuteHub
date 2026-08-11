@@ -169,13 +169,28 @@ export interface ExecutionLog {
   message: string;
 }
 
+export type ArtifactType = "screenshot" | "video" | "trace" | "log" | "report";
+export type ArtifactStatus = "pending" | "uploading" | "uploaded" | "failed";
+
 export interface Artifact {
   id: number;
   job_id: number;
-  artifact_type: "screenshot" | "video" | "trace";
-  path: string;
-  size: number;
+  test_run_id: number;
+  artifact_type: ArtifactType;
+  file_name: string;
+  s3_key: string;
+  content_type: string;
+  file_size: number;
+  checksum: string | null;
+  status: ArtifactStatus;
+  storage_backend: "s3" | "local";
   created_at: string;
+}
+
+export interface ArtifactUrlResponse {
+  url: string | null;
+  expires_in: number;
+  storage_backend: "s3" | "local";
 }
 
 export interface JobSummary {
@@ -183,6 +198,95 @@ export interface JobSummary {
   failed: number;
   duration_ms: number | null;
   exit_status: string;
+}
+
+export interface TestReport {
+  id: number;
+  test_run_id: number;
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  skipped_tests: number;
+  flaky_tests: number;
+  duration_ms: number;
+  success_rate: number;
+  generated_at: string;
+}
+
+export type TestResultStatus = "passed" | "failed" | "skipped" | "flaky";
+
+export interface TestResult {
+  id: number;
+  job_id: number;
+  test_run_id: number;
+  test_name: string;
+  suite_name: string | null;
+  status: TestResultStatus;
+  duration_ms: number;
+  browser: string | null;
+  error_message: string | null;
+  retry_count: number;
+  started_at: string | null;
+  finished_at: string | null;
+  worker: string | null;
+}
+
+export interface TestResultDetail extends TestResult {
+  stack_trace: string | null;
+  artifacts: Artifact[];
+  logs: ExecutionLog[];
+}
+
+export interface AnalyticsOverview {
+  success_rate: number;
+  failure_rate: number;
+  average_execution_duration_ms: number | null;
+  average_test_duration_ms: number | null;
+  tests_executed: number;
+  tests_passed: number;
+  tests_failed: number;
+  tests_skipped: number;
+  flaky_test_count: number;
+  retry_rate: number;
+  worker_utilization: number;
+  total_test_runs: number;
+  completed_test_runs: number;
+  failed_test_runs: number;
+}
+
+export interface SuccessRatePoint {
+  date: string;
+  success_rate: number;
+}
+
+export interface DurationPoint {
+  date: string;
+  average_execution_duration_ms: number | null;
+}
+
+export interface TestsPerDayPoint {
+  date: string;
+  tests_executed: number;
+}
+
+export interface NamedCount {
+  name: string;
+  count: number;
+}
+
+export interface AnalyticsHistory {
+  success_rate_over_time: SuccessRatePoint[];
+  failure_rate_over_time: SuccessRatePoint[];
+  average_execution_duration: DurationPoint[];
+  tests_executed_per_day: TestsPerDayPoint[];
+  flaky_tests: number;
+  most_failing_tests: NamedCount[];
+  most_failing_suites: NamedCount[];
+}
+
+export interface AnalyticsResponse {
+  overview: AnalyticsOverview;
+  history: AnalyticsHistory;
 }
 
 export interface JobDetail extends Job {
@@ -423,6 +527,42 @@ export const api = {
 
   getJobArtifacts: (token: string, id: number) =>
     request<{ artifacts: Artifact[] }>(`/jobs/${id}/artifacts`, { token }),
+
+  listArtifacts: (token: string) =>
+    request<{ artifacts: Artifact[] }>("/artifacts", { token }),
+
+  getArtifact: (token: string, id: number) =>
+    request<{ artifact: Artifact }>(`/artifacts/${id}`, { token }),
+
+  getArtifactUrl: (token: string, id: number) =>
+    request<ArtifactUrlResponse>(`/artifacts/${id}/url`, { token }),
+
+  deleteArtifact: (token: string, id: number) =>
+    request<undefined>(`/artifacts/${id}`, { method: "DELETE", token }),
+
+  retryArtifact: (token: string, id: number) =>
+    request<{ artifact: Artifact }>(`/artifacts/${id}/retry`, { method: "POST", token }),
+
+  getTestRunReport: (token: string, id: number) =>
+    request<{ test_run: TestRun; test_report: TestReport | null; test_results: TestResult[] }>(
+      `/test_runs/${id}/report`,
+      { token }
+    ),
+
+  getTestRunResults: (token: string, id: number) =>
+    request<{ test_results: TestResult[] }>(`/test_runs/${id}/results`, { token }),
+
+  getTestRunAnalytics: (token: string, id: number) =>
+    request<AnalyticsResponse>(`/test_runs/${id}/analytics`, { token }),
+
+  getTestResult: (token: string, id: number) =>
+    request<{ test_result: TestResultDetail }>(`/test_results/${id}`, { token }),
+
+  getAnalytics: (token: string, days = 30) =>
+    request<AnalyticsResponse>(`/analytics?days=${days}`, { token }),
+
+  getProjectAnalytics: (token: string, projectId: number, days = 30) =>
+    request<AnalyticsResponse>(`/projects/${projectId}/analytics?days=${days}`, { token }),
 
   getArtifactFile: async (token: string, id: number): Promise<Blob> => {
     const response = await fetch(`${API_BASE_URL}/artifacts/${id}/file`, {

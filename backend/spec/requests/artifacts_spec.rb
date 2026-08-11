@@ -20,6 +20,35 @@ RSpec.describe "Artifacts API", type: :request do
     )
   end
 
+  describe "GET /api/v1/artifacts" do
+    it "lists the caller's recent artifacts newest first" do
+      old_artifact = create(:artifact, job: job, artifact_type: :screenshot, created_at: 2.days.ago)
+      new_artifact = create(:artifact, job: job, artifact_type: :video, created_at: 1.hour.ago)
+
+      get "/api/v1/artifacts", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      artifacts = JSON.parse(response.body)["artifacts"]
+      expect(artifacts.map { |a| a["id"] }).to eq([new_artifact.id, old_artifact.id])
+      expect(artifacts.first).to include("artifact_type", "file_name", "status", "storage_backend")
+    end
+
+    it "excludes artifacts from projects the user cannot see" do
+      other = create(:project, user: create(:user), team: create(:team))
+      create(:artifact, job: create(:job, test_run: create(:test_run, project: other)), artifact_type: :screenshot)
+
+      get "/api/v1/artifacts", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["artifacts"]).to be_empty
+    end
+
+    it "requires authentication" do
+      get "/api/v1/artifacts"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "GET /api/v1/artifacts/:id" do
     it "returns artifact metadata without exposing AWS details" do
       artifact = create(:artifact, job: job, artifact_type: :video, status: :uploaded)

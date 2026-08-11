@@ -38,7 +38,7 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :artifacts, only: [:show, :destroy] do
+      resources :artifacts, only: [:index, :show, :destroy] do
         member do
           get "url"
           get "file"
