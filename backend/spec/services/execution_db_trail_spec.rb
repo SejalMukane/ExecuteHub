@@ -26,8 +26,10 @@ RSpec.describe "Automatic execution DB trail", type: :service do
   before do
     File.write(video_path, "webm")
     allow(artifact_store).to receive(:prepare).with(job).and_return(job_dir)
+    allow(artifact_store).to receive(:job_dir).with(job).and_return(job_dir)
     allow(artifact_store).to receive(:relative).with(video_path).and_return("job_#{job.id}/artifacts/video.webm")
     allow(TestRunProgressUpdater).to receive(:call)
+    allow(ArtifactUploadJob).to receive(:perform_async)
   end
 
   after do
@@ -64,10 +66,10 @@ RSpec.describe "Automatic execution DB trail", type: :service do
     expect(job.execution_logs.map(&:message)).to include("  ✓  1 passed")
     expect(job.execution_logs.pluck(:level).uniq - %w[info warn error]).to be_empty
 
-    # Artifacts copied out of the container.
-    expect(job.artifacts.size).to eq(1)
-    expect(job.artifacts.first.artifact_type).to eq("video")
-    expect(job.artifacts.first.size).to eq(4)
+    # Artifacts copied out of the container (video + exported execution log).
+    expect(job.artifacts.size).to eq(2)
+    expect(job.artifacts.map(&:artifact_type)).to include("video", "log")
+    expect(job.artifacts.find_by(artifact_type: "video").size).to eq(4)
 
     # The claimed worker stays Busy on this job while it is executing.
     expect(worker.reload.status).to eq("busy")

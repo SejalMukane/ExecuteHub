@@ -31,10 +31,68 @@ RSpec.describe PlaywrightOutputParser, type: :service do
 
       expect(result[:tests]).to eq(
         [
-          { title: "homepage loads and exposes the expected title", file: "homepage.spec.ts", status: "passed", duration_ms: 930 },
-          { title: "logs in with valid demo credentials", file: "login.spec.ts", status: "failed", duration_ms: 8300 }
+          {
+            title: "homepage loads and exposes the expected title", file: "homepage.spec.ts",
+            status: "passed", duration_ms: 930, retry: 0,
+            error_message: nil, stack_trace: nil, started_at: nil
+          },
+          {
+            title: "logs in with valid demo credentials", file: "login.spec.ts",
+            status: "failed", duration_ms: 8300, retry: 0,
+            error_message: nil, stack_trace: nil, started_at: nil
+          }
         ]
       )
+    end
+
+    it "extracts retries, error message, stack trace and start time for retried failures" do
+      payload = {
+        "stats" => { "expected" => 0, "unexpected" => 1, "flaky" => 0, "skipped" => 0, "duration" => 5000 },
+        "suites" => [
+          {
+            "title" => "login.spec.ts",
+            "specs" => [
+              {
+                "title" => "logs in",
+                "tests" => [
+                  { "status" => "unexpected", "duration" => 1000.0, "startTime" => "2026-08-11T10:00:00.000Z" },
+                  {
+                    "status" => "unexpected", "duration" => 2000.0,
+                    "startTime" => "2026-08-11T10:00:02.000Z",
+                    "error" => {
+                      "message" => "Error: expect(login).toBeVisible()\n\n    at /app/tests/login.spec.ts:12"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+      File.write(results_file, JSON.generate(payload))
+
+      test = described_class.parse(results_file, artifacts_dir)[:tests].first
+
+      expect(test[:status]).to eq("failed")
+      expect(test[:retry]).to eq(1)
+      expect(test[:error_message]).to eq("Error: expect(login).toBeVisible()")
+      expect(test[:stack_trace]).to include("login.spec.ts:12")
+      expect(test[:started_at].utc.iso8601).to eq("2026-08-11T10:00:02Z")
+    end
+
+    it "maps Playwright flaky tests onto the flaky status" do
+      payload = {
+        "stats" => { "expected" => 0, "unexpected" => 0, "flaky" => 1, "skipped" => 0, "duration" => 3000 },
+        "suites" => [
+          { "title" => "suite.ts", "specs" => [{ "title" => "flaky test", "tests" => [{ "status" => "flaky", "duration" => 500.0 }] }] }
+        ]
+      }
+      File.write(results_file, JSON.generate(payload))
+
+      result = described_class.parse(results_file, artifacts_dir)
+
+      expect(result[:flaky]).to eq(1)
+      expect(result[:tests].first[:status]).to eq("flaky")
     end
 
     it "discovers screenshots, videos and traces in the output directory" do

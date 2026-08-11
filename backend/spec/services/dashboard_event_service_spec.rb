@@ -139,6 +139,66 @@ RSpec.describe DashboardEventService, type: :service do
     end
   end
 
+  describe ".artifact_upload_started / .artifact_uploaded / .artifact_failed" do
+    it "broadcasts artifact lifecycle events to the run and dashboard" do
+      artifact = create(:artifact, artifact_type: :screenshot, status: :uploading)
+
+      described_class.artifact_upload_started(artifact)
+      described_class.artifact_uploaded(artifact)
+      described_class.artifact_failed(artifact, "no space left")
+
+      types = @broadcasts.filter_map { |s, p| p[:type] if s == "dashboard" }
+      expect(types).to eq(%i[artifact_upload_started artifact_uploaded artifact_failed])
+
+      uploaded = @broadcasts.find { |_, p| p[:type] == :artifact_uploaded }&.last
+      expect(uploaded[:artifact][:id]).to eq(artifact.id)
+      expect(uploaded[:artifact][:artifact_type]).to eq("screenshot")
+
+      failed = @broadcasts.find { |_, p| p[:type] == :artifact_failed }&.last
+      expect(failed[:error]).to eq("no space left")
+    end
+  end
+
+  describe ".report_generated" do
+    it "broadcasts the generated report to the run and dashboard" do
+      run = create(:test_run, status: :completed)
+      report = create(:test_report, test_run: run, success_rate: 90.0)
+
+      described_class.report_generated(run)
+
+      payload = @broadcasts.find { |_, p| p[:type] == :report_generated }&.last
+      expect(payload[:test_run_id]).to eq(run.id)
+      expect(payload[:report][:id]).to eq(report.id)
+      expect(payload[:report][:success_rate]).to eq(90.0)
+    end
+  end
+
+  describe ".test_result_completed" do
+    it "broadcasts a single test outcome" do
+      job = create(:job)
+      result = create(:test_result, job: job, test_run: job.test_run, status: :failed)
+
+      described_class.test_result_completed(result)
+
+      payload = @broadcasts.find { |_, p| p[:type] == :test_result_completed }&.last
+      expect(payload[:test_result][:id]).to eq(result.id)
+      expect(payload[:test_result][:status]).to eq("failed")
+      expect(payload[:test_result][:job_id]).to eq(job.id)
+    end
+  end
+
+  describe ".test_run_analytics_updated" do
+    it "broadcasts refreshed analytics for the run and dashboard" do
+      run = create(:test_run, status: :completed)
+
+      described_class.test_run_analytics_updated(run)
+
+      payload = @broadcasts.find { |_, p| p[:type] == :test_run_analytics_updated }&.last
+      expect(payload[:test_run_id]).to eq(run.id)
+      expect(@broadcasts.map(&:first)).to include("test_run_#{run.id}", "dashboard")
+    end
+  end
+
   it "is failure-tolerant when ActionCable is unavailable" do
     allow(ActionCable.server).to receive(:broadcast).and_raise("cable down")
 

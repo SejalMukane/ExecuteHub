@@ -10,19 +10,29 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_040000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "artifacts", force: :cascade do |t|
     t.string "artifact_type", null: false
+    t.string "checksum"
+    t.string "content_type"
     t.datetime "created_at", null: false
+    t.string "file_name"
     t.bigint "job_id", null: false
     t.string "path", null: false
+    t.string "s3_key"
     t.bigint "size", default: 0, null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "test_run_id"
     t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_artifacts_on_created_at"
     t.index ["job_id", "artifact_type"], name: "index_artifacts_on_job_id_and_artifact_type"
     t.index ["job_id"], name: "index_artifacts_on_job_id"
+    t.index ["s3_key"], name: "index_artifacts_on_s3_key", unique: true
+    t.index ["status"], name: "index_artifacts_on_status"
+    t.index ["test_run_id"], name: "index_artifacts_on_test_run_id"
   end
 
   create_table "browser_images", force: :cascade do |t|
@@ -169,6 +179,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_040000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "test_reports", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "duration_ms", default: 0, null: false
+    t.integer "failed_tests", default: 0, null: false
+    t.integer "flaky_tests", default: 0, null: false
+    t.datetime "generated_at", null: false
+    t.integer "passed_tests", default: 0, null: false
+    t.integer "skipped_tests", default: 0, null: false
+    t.float "success_rate", default: 0.0, null: false
+    t.bigint "test_run_id", null: false
+    t.integer "total_tests", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["generated_at"], name: "index_test_reports_on_generated_at"
+    t.index ["test_run_id"], name: "index_test_reports_on_test_run_id", unique: true
+  end
+
+  create_table "test_results", force: :cascade do |t|
+    t.string "browser"
+    t.datetime "created_at", null: false
+    t.integer "duration_ms", default: 0, null: false
+    t.text "error_message"
+    t.datetime "finished_at"
+    t.bigint "job_id", null: false
+    t.integer "retry_count", default: 0, null: false
+    t.text "stack_trace"
+    t.datetime "started_at"
+    t.string "status", null: false
+    t.string "suite_name"
+    t.string "test_name", null: false
+    t.bigint "test_run_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_test_results_on_created_at"
+    t.index ["job_id"], name: "index_test_results_on_job_id"
+    t.index ["status"], name: "index_test_results_on_status"
+    t.index ["suite_name", "status"], name: "index_test_results_on_suite_name_and_status"
+    t.index ["test_name", "status"], name: "index_test_results_on_test_name_and_status"
+    t.index ["test_run_id", "status"], name: "index_test_results_on_test_run_id_and_status"
+    t.index ["test_run_id"], name: "index_test_results_on_test_run_id"
+  end
+
   create_table "test_runs", force: :cascade do |t|
     t.string "branch", default: "main", null: false
     t.string "commit_sha"
@@ -234,6 +284,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_040000) do
   end
 
   add_foreign_key "artifacts", "jobs"
+  add_foreign_key "artifacts", "test_runs"
   add_foreign_key "browser_sessions", "users"
   add_foreign_key "execution_logs", "jobs"
   add_foreign_key "github_integrations", "users"
@@ -245,6 +296,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_040000) do
   add_foreign_key "jobs", "test_runs"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users"
+  add_foreign_key "test_reports", "test_runs"
+  add_foreign_key "test_results", "jobs"
+  add_foreign_key "test_results", "test_runs"
   add_foreign_key "test_runs", "projects"
   add_foreign_key "test_runs", "test_suites"
   add_foreign_key "users", "teams"

@@ -23,6 +23,9 @@ Rails.application.routes.draw do
         end
         member do
           get "progress", to: "test_runs#progress"
+          get "report", to: "test_runs#report"
+          get "results", to: "test_runs#results"
+          get "analytics", to: "test_runs#analytics"
         end
       end
 
@@ -35,11 +38,18 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :artifacts, only: [] do
+      resources :artifacts, only: [:show, :destroy] do
         member do
+          get "url"
           get "file"
+          post "retry"
         end
       end
+
+      resources :test_results, only: [:show]
+
+      get "analytics", to: "analytics#overview"
+      get "projects/:project_id/analytics", to: "analytics#project"
 
       get "queue", to: "queue#show"
 

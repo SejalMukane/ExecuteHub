@@ -4,7 +4,7 @@ module Api
       include Authenticatable
 
       before_action :set_project, only: [:create]
-      before_action :set_test_run, only: [:show, :progress]
+      before_action :set_test_run, only: [:show, :progress, :report, :results, :analytics]
       before_action :authorize_write, only: [:create]
 
       # GET /api/v1/test_runs — newest first.
@@ -22,6 +22,27 @@ module Api
       # (queued/running/completed/failed jobs + progress). Cheap: no job rows.
       def progress
         render json: { test_run: @test_run.progress_snapshot }
+      end
+
+      # GET /api/v1/test_runs/:id/report — the aggregated TestReport plus every
+      # individual TestResult for the run's test-result table.
+      def report
+        render json: {
+          test_run: test_run_response(@test_run),
+          test_report: report_response(@test_run.test_report),
+          test_results: @test_run.test_results.chronological.map { |result| test_result_response(result) }
+        }
+      end
+
+      # GET /api/v1/test_runs/:id/results — individual test outcomes.
+      def results
+        results = @test_run.test_results.chronological
+        render json: { test_results: results.map { |result| test_result_response(result) } }
+      end
+
+      # GET /api/v1/test_runs/:id/analytics — analytics for this one run.
+      def analytics
+        render json: TestAnalyticsService.for_test_run(@test_run)
       end
 
       # POST /api/v1/projects/:project_id/test_runs
@@ -100,6 +121,40 @@ module Api
           name: suite.name,
           description: suite.description,
           total_tests: suite.total_tests
+        }
+      end
+
+      def report_response(report)
+        return nil unless report
+
+        {
+          test_run_id: report.test_run_id,
+          total_tests: report.total_tests,
+          passed_tests: report.passed_tests,
+          failed_tests: report.failed_tests,
+          skipped_tests: report.skipped_tests,
+          flaky_tests: report.flaky_tests,
+          duration_ms: report.duration_ms,
+          success_rate: report.success_rate,
+          generated_at: report.generated_at
+        }
+      end
+
+      def test_result_response(result)
+        {
+          id: result.id,
+          job_id: result.job_id,
+          test_run_id: result.test_run_id,
+          test_name: result.test_name,
+          suite_name: result.suite_name,
+          status: result.status,
+          duration_ms: result.duration_ms,
+          browser: result.browser,
+          error_message: result.error_message,
+          retry_count: result.retry_count,
+          started_at: result.started_at,
+          finished_at: result.finished_at,
+          worker: result.job.worker_id
         }
       end
 

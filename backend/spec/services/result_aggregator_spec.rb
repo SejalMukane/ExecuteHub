@@ -100,6 +100,33 @@ RSpec.describe ResultAggregator, type: :service do
 
         expect { described_class.call(test_run) }.not_to change { test_run.reload.status }
       end
+
+      it "generates the aggregate test report once every job is terminal" do
+        test_run = create(:test_run, status: :queued, total_tests: 40)
+        job = create(:job, test_run: test_run, status: :completed, passed_tests: 38, failed_tests: 2)
+        create(:test_result, job: job, test_run: test_run, status: :passed)
+        create(:test_result, job: job, test_run: test_run, status: :passed)
+        create(:test_result, job: job, test_run: test_run, status: :failed)
+
+        described_class.call(test_run)
+
+        report = test_run.reload.test_report
+        expect(report).to be_present
+        expect(report.total_tests).to eq(3)
+        expect(report.passed_tests).to eq(2)
+        expect(report.failed_tests).to eq(1)
+      end
+
+      it "falls back to job counters when no test results exist" do
+        test_run = create(:test_run, status: :queued)
+        create(:job, test_run: test_run, status: :completed, passed_tests: 20, failed_tests: 5)
+
+        described_class.call(test_run)
+
+        report = test_run.reload.test_report
+        expect(report.total_tests).to eq(25)
+        expect(report.failed_tests).to eq(5)
+      end
     end
   end
 end

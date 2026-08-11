@@ -84,5 +84,27 @@ RSpec.describe "Jobs API", type: :request do
       expect(artifacts.length).to eq(2)
       expect(artifacts.map { |artifact| artifact["artifact_type"] }).to contain_exactly("screenshot", "trace")
     end
+
+    it "includes the full artifact metadata" do
+      job = create(:job, test_run: test_run, status: :completed)
+      create(:artifact, job: job, artifact_type: :screenshot, file_name: "screenshot.png",
+        content_type: "image/png", status: :uploaded, checksum: "a" * 64)
+
+      get "/api/v1/jobs/#{job.id}/artifacts", headers: headers
+
+      artifact = JSON.parse(response.body)["artifacts"].first
+      expect(artifact).to include(
+        "job_id" => job.id,
+        "test_run_id" => test_run.id,
+        "artifact_type" => "screenshot",
+        "file_name" => "screenshot.png",
+        "content_type" => "image/png",
+        "status" => "uploaded",
+        "storage_backend" => "local"
+      )
+      expect(artifact["s3_key"]).to be_present
+      expect(artifact["checksum"]).to be_present
+      expect(artifact["created_at"]).to be_present
+    end
   end
 end

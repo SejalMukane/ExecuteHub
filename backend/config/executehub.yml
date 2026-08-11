@@ -18,6 +18,12 @@ defaults: &defaults
   retry_delay_seconds: 5
   # Hard ceiling for a single job's container execution before it is killed.
   worker_execution_timeout_seconds: 600
+  # Days an uploaded artifact is kept before ArtifactCleanupJob removes it.
+  # Can be overridden with the ARTIFACT_RETENTION_DAYS env var.
+  artifact_retention_days: 30
+  # Default lifetime (seconds) of artifact signed URLs. Can be overridden with
+  # the ARTIFACT_SIGNED_URL_TTL env var.
+  artifact_signed_url_ttl: 900
   # Simulated processing time (seconds) used by TestExecutionWorker before
   # marking a job as complete. No real browser execution happens yet.
   worker_simulate_delay: 1

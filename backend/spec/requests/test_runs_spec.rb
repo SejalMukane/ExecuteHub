@@ -211,4 +211,72 @@ RSpec.describe "TestRuns API", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "GET /api/v1/test_runs/:id/report" do
+    it "returns the aggregated report and every test result" do
+      run = create(:test_run, project: project, total_tests: 100, status: :completed)
+      job = create(:job, test_run: run, status: :completed)
+      create(:test_result, job: job, test_run: run, status: :passed, test_name: "login ok")
+      create(:test_result, job: job, test_run: run, status: :failed, test_name: "checkout fails")
+      TestReportGenerator.call(run)
+
+      get "/api/v1/test_runs/#{run.id}/report", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      report = body["test_report"]
+      expect(report["total_tests"]).to eq(2)
+      expect(report["passed_tests"]).to eq(1)
+      expect(report["failed_tests"]).to eq(1)
+      expect(report["success_rate"]).to eq(50.0)
+      expect(body["test_results"].map { |r| r["status"] }).to contain_exactly("passed", "failed")
+      expect(body["test_results"].first["worker"]).to eq(job.worker_id)
+    end
+
+    it "returns a nil report before aggregation completes" do
+      run = create(:test_run, project: project, status: :running)
+
+      get "/api/v1/test_runs/#{run.id}/report", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["test_report"]).to be_nil
+    end
+
+    it "returns 404 for a run the user cannot access" do
+      run = create(:test_run, project: create(:project))
+      get "/api/v1/test_runs/#{run.id}/report", headers: headers
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "GET /api/v1/test_runs/:id/results" do
+    it "returns the run's individual test outcomes" do
+      run = create(:test_run, project: project, status: :completed)
+      job = create(:job, test_run: run, status: :completed)
+      create(:test_result, job: job, test_run: run, status: :failed, test_name: "broken test")
+
+      get "/api/v1/test_runs/#{run.id}/results", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      results = JSON.parse(response.body)["test_results"]
+      expect(results.length).to eq(1)
+      expect(results.first["test_name"]).to eq("broken test")
+      expect(results.first["status"]).to eq("failed")
+    end
+  end
+
+  describe "GET /api/v1/test_runs/:id/analytics" do
+    it "returns run-scoped analytics" do
+      run = create(:test_run, project: project, status: :completed)
+      job = create(:job, test_run: run, status: :completed)
+      create(:test_result, job: job, test_run: run, status: :passed)
+
+      get "/api/v1/test_runs/#{run.id}/analytics", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["overview"]["tests_executed"]).to eq(1)
+      expect(body["overview"]["success_rate"]).to eq(100.0)
+    end
+  end
 end

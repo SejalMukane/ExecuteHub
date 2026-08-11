@@ -27,9 +27,11 @@ RSpec.describe WorkerExecutor, type: :service do
     File.write(video_path, "webm")
     File.write(trace_path, "zip")
     allow(artifact_store).to receive(:prepare).with(job).and_return(job_dir)
+    allow(artifact_store).to receive(:job_dir).with(job).and_return(job_dir)
     allow(artifact_store).to receive(:relative).with(video_path).and_return("job_#{job.id}/artifacts/video.webm")
     allow(artifact_store).to receive(:relative).with(trace_path).and_return("job_#{job.id}/artifacts/trace.zip")
     allow(TestRunProgressUpdater).to receive(:call)
+    allow(ArtifactUploadJob).to receive(:perform_async)
   end
 
   after do
@@ -68,8 +70,9 @@ RSpec.describe WorkerExecutor, type: :service do
         expect(job.failed_tests).to eq(0)
         expect(job.duration_ms).to be_present
         expect(job.finished_at).to be_present
-        expect(job.artifacts.size).to eq(2)
-        expect(job.artifacts.map(&:artifact_type)).to contain_exactly("video", "trace")
+        # video + trace + the exported execution.log artifact
+        expect(job.artifacts.size).to eq(3)
+        expect(job.artifacts.map(&:artifact_type)).to contain_exactly("video", "trace", "log")
       end
     end
 
@@ -226,6 +229,7 @@ RSpec.describe WorkerExecutor, type: :service do
       docker_b = instance_double(DockerService)
       second = described_class.new(passing, docker: docker_b, parser: parser, artifact_store: artifact_store)
       allow(artifact_store).to receive(:prepare).and_return(job_dir)
+      allow(artifact_store).to receive(:job_dir).and_return(job_dir)
       allow(artifact_store).to receive(:relative).and_return("job_#{passing.id}/artifacts/video.webm")
       allow(docker_b).to receive(:create).and_return(container)
       allow(docker_b).to receive(:start)

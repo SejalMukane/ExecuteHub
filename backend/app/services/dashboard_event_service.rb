@@ -98,6 +98,48 @@ class DashboardEventService
       broadcast("dashboard", { type: :artifacts_uploaded, artifacts: payload })
     end
 
+    # ----------------------------------------------------------------------
+    # Artifact upload lifecycle events (Part 22)
+    # ----------------------------------------------------------------------
+    def artifact_upload_started(artifact)
+      artifact_broadcast(:artifact_upload_started, artifact)
+    end
+
+    def artifact_uploaded(artifact)
+      artifact_broadcast(:artifact_uploaded, artifact)
+    end
+
+    def artifact_failed(artifact, error_message)
+      payload = { type: :artifact_failed, error: error_message, artifact: artifact_payload(artifact) }
+      broadcast("test_run_#{artifact.test_run_id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    # ----------------------------------------------------------------------
+    # Report / result events (Part 22)
+    # ----------------------------------------------------------------------
+    def report_generated(test_run)
+      payload = {
+        type: :report_generated,
+        test_run_id: test_run.id,
+        report: report_payload(test_run.test_report)
+      }
+      broadcast("test_run_#{test_run.id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    def test_result_completed(test_result)
+      payload = { type: :test_result_completed, test_result: test_result_payload(test_result) }
+      broadcast("test_run_#{test_result.test_run_id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    def test_run_analytics_updated(test_run)
+      payload = { type: :test_run_analytics_updated, test_run_id: test_run.id }
+      broadcast("test_run_#{test_run.id}", payload)
+      broadcast("dashboard", payload)
+    end
+
     def execution_finished(test_run)
       broadcast_dashboard(:execution_finished, execution_payload(test_run))
     end
@@ -231,16 +273,7 @@ class DashboardEventService
     def current_browser_for(job)
       return "Chrome" unless job
 
-      # The Playwright image is configured in executehub.yml; surface a friendly
-      # browser label for the dashboard. This is a placeholder until the runner
-      # reports the browser it actually used.
-      image = (Rails.configuration.executehub["worker"] || {})["image"].to_s
-      case image
-      when /webkit/i then "WebKit"
-      when /firefox/i then "Firefox"
-      when /chromium/i then "Chromium"
-      else "Chrome"
-      end
+      BrowserLabel.call
     end
 
     def job_payload(job)
@@ -255,6 +288,56 @@ class DashboardEventService
         finished_at: job.finished_at,
         retry_count: job.retry_count,
         container_id: job.container_id
+      }
+    end
+
+    def artifact_broadcast(kind, artifact)
+      payload = { type: kind, artifact: artifact_payload(artifact) }
+      broadcast("test_run_#{artifact.test_run_id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    def artifact_payload(artifact)
+      {
+        id: artifact.id,
+        job_id: artifact.job_id,
+        test_run_id: artifact.test_run_id,
+        artifact_type: artifact.artifact_type,
+        file_name: artifact.file_name,
+        size: artifact.size,
+        status: artifact.status
+      }
+    end
+
+    def report_payload(report)
+      return {} unless report
+
+      {
+        id: report.id,
+        test_run_id: report.test_run_id,
+        total_tests: report.total_tests,
+        passed_tests: report.passed_tests,
+        failed_tests: report.failed_tests,
+        skipped_tests: report.skipped_tests,
+        flaky_tests: report.flaky_tests,
+        duration_ms: report.duration_ms,
+        success_rate: report.success_rate,
+        generated_at: report.generated_at
+      }
+    end
+
+    def test_result_payload(result)
+      {
+        id: result.id,
+        job_id: result.job_id,
+        test_run_id: result.test_run_id,
+        test_name: result.test_name,
+        suite_name: result.suite_name,
+        status: result.status,
+        duration_ms: result.duration_ms,
+        browser: result.browser,
+        error_message: result.error_message,
+        retry_count: result.retry_count
       }
     end
 

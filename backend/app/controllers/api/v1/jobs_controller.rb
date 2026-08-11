@@ -83,11 +83,28 @@ module Api
         {
           id: artifact.id,
           job_id: artifact.job_id,
+          test_run_id: artifact.test_run_id,
           artifact_type: artifact.artifact_type,
-          path: artifact.path,
-          size: artifact.size,
+          file_name: artifact.file_name,
+          s3_key: artifact.s3_key,
+          content_type: artifact.content_type || content_type_for(artifact.artifact_type),
+          file_size: artifact.size,
+          checksum: artifact.checksum,
+          status: artifact.status,
+          storage_backend: StorageService.storage_backend,
           created_at: artifact.created_at
         }
+      end
+
+      def content_type_for(type)
+        case type
+        when "screenshot" then "image/png"
+        when "video" then "video/webm"
+        when "trace" then "application/zip"
+        when "log" then "text/plain"
+        when "report" then "application/json"
+        else "application/octet-stream"
+        end
       end
 
       def summary_response(job)

@@ -15,6 +15,9 @@ gem "bcrypt", "~> 3.1.7"
 # JWT for token-based authentication
 gem "jwt"
 
+# AWS S3 for persistent artifact storage (screenshots, videos, traces, logs, reports)
+gem "aws-sdk-s3", "~> 1.170"
+
 # Redis + Sidekiq for background job processing (test_execution queue)
 gem "redis", "~> 5.0"
 gem "sidekiq", "~> 7.3"

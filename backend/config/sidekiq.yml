@@ -8,3 +8,4 @@
 :queues:
   - [test_execution, 3]
   - [default, 1]
+  - [artifacts, 1]

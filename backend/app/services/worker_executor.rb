@@ -104,7 +104,7 @@ class WorkerExecutor
 
   def upload_artifacts(container)
     job.mark_uploading_artifacts!
-    log(:info, "Uploading artifacts")
+    log(:info, "Collecting artifacts")
 
     job_dir = @artifact_store.prepare(job)
     @docker.copy(container, source: settings["container_artifacts_path"], destination: job_dir)
@@ -192,19 +192,35 @@ class WorkerExecutor
     )
   end
 
+  # Turns the parsed summary into structured evidence: per-test TestResults
+  # (the failed test becomes the debugging object) and pending Artifact records
+  # for every local file (screenshots, videos, traces, the execution log and
+  # the Playwright JSON report). Uploads to remote storage happen in the
+  # background via ArtifactUploadJob — the worker is never blocked on S3.
   def persist_artifacts
-    records = @summary[:screenshots].map { |path| artifact_attributes("screenshot", path) } +
-              @summary[:videos].map { |path| artifact_attributes("video", path) } +
-              @summary[:traces].map { |path| artifact_attributes("trace", path) }
-    job.artifacts.create!(records) if records.any?
+    @summary[:logs] = [write_log_file].compact
+    @summary[:reports] = [results_file_path].compact if File.exist?(results_file_path)
+
+    TestResultBuilder.persist(job, @summary[:tests], browser: BrowserLabel.call)
+    ArtifactUploader.persist_artifacts(job, @summary)
   end
 
-  def artifact_attributes(type, path)
-    {
-      artifact_type: type,
-      path: @artifact_store.relative(path),
-      size: File.size?(path).to_i
-    }
+  # Exports the job's execution logs (lifecycle + Playwright output) to a file
+  # that gets uploaded as a "log" artifact.
+  def write_log_file
+    log_path = @artifact_store.job_dir(job).join("artifacts", "execution.log")
+    content = job.execution_logs.chronological.map { |entry|
+      "[#{entry.timestamp.iso8601}] #{entry.level.upcase}: #{entry.message}"
+    }.join("\n")
+    if content.present?
+      FileUtils.mkdir_p(log_path.dirname)
+      File.write(log_path, content)
+    end
+    log_path
+  end
+
+  def results_file_path
+    @artifact_store.job_dir(job).join("artifacts", settings["results_file"])
   end
 
   def destroy_container(container)

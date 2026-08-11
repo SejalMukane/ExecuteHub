@@ -3,6 +3,7 @@ class Job < ApplicationRecord
 
   has_many :execution_logs, dependent: :destroy
   has_many :artifacts, dependent: :destroy
+  has_many :test_results, dependent: :destroy
   has_many :job_retries, dependent: :destroy
 
   enum :status, {
