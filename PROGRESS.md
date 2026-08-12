@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 12 August 2026 (Week 7 complete — S3 artifact storage, test reporting & analytics)
+**Last updated:** 13 August 2026 (Week 7 complete — S3 artifact storage, test reporting & analytics; analytics rate fix f57b365)
 ---
 
 ## Project Overview
@@ -693,7 +693,8 @@ bundle exec rspec   # 118 examples, 0 failures
 
 ### Testing
 
-- **Backend RSpec — 355 examples, 0 failures** (352 before the artifacts-index addition, +3 in the index specs).
+- **Backend RSpec — 356 examples, 0 failures** (352 before the artifacts-index addition, +3 in the index specs, +1 analytics regression spec).
+- **Analytics rate fix (f57b365)** — found during a live dev-stack run: the daily success/failure time-series divided `SUM(passed_tests)` by `SUM(total_tests)` (the *configured* run size) while the overview used actual executed tests. A run configured for 20 tests that executed 2 showed 10% success in the chart vs 100% in the overview. Now both use `passed / (passed + failed)` per day; regression spec added.
 - **Frontend** — `npm test`: 3 suites, 11 tests passing; `npx next build` succeeds (19 routes incl. report/artifacts/analytics/results).
 
 ### Key Files — Week 7
