@@ -117,8 +117,8 @@ class TestAnalyticsService
   def daily_aggregate(metric)
     select_map = {
       "tests" => "SUM(total_tests) AS value",
-      "success_rate" => "SUM(passed_tests) AS passed, SUM(total_tests) AS total",
-      "failure_rate" => "SUM(failed_tests) AS failed, SUM(total_tests) AS total",
+      "success_rate" => "SUM(passed_tests) AS passed, SUM(passed_tests) + SUM(failed_tests) AS total",
+      "failure_rate" => "SUM(failed_tests) AS failed, SUM(passed_tests) + SUM(failed_tests) AS total",
       "average_duration" => "AVG(total_duration_ms) AS value"
     }.fetch(metric)
 

@@ -3,9 +3,9 @@ require "rails_helper"
 RSpec.describe TestAnalyticsService, type: :service do
   let(:project) { create(:project) }
 
-  def build_run(project:, passed:, failed:, skipped: 0, flaky: 0, duration_ms: 5000, days_ago: 0)
+  def build_run(project:, passed:, failed:, skipped: 0, flaky: 0, duration_ms: 5000, days_ago: 0, total_tests_override: nil)
     run = create(:test_run, project: project, status: :completed, created_at: days_ago.days.ago,
-      total_tests: passed + failed + skipped, passed_tests: passed, failed_tests: failed,
+      total_tests: total_tests_override || passed + failed + skipped, passed_tests: passed, failed_tests: failed,
       total_duration_ms: duration_ms)
     job = create(:job, test_run: run, status: :completed, duration_ms: duration_ms)
     passed.times { create(:test_result, job: job, test_run: run, status: :passed, duration_ms: 100) }
@@ -70,6 +70,15 @@ RSpec.describe TestAnalyticsService, type: :service do
 
       expect(series.length).to eq(1)
       expect(series.first[:success_rate]).to eq(70.0)
+    end
+
+    it "uses actual executed tests, not configured run totals, for the daily rates" do
+      build_run(project: project, passed: 2, failed: 0, days_ago: 1, total_tests_override: 20)
+
+      history = described_class.for_project(project, days: 30)[:history]
+      series = history[:success_rate_over_time]
+
+      expect(series.first[:success_rate]).to eq(100.0)
     end
 
     it "ranks the most frequently failing tests and suites" do
