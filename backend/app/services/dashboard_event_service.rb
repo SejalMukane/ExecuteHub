@@ -145,6 +145,52 @@ class DashboardEventService
     end
 
     # ----------------------------------------------------------------------
+    # CI / pipeline events (Week 8)
+    # ----------------------------------------------------------------------
+    def pipeline_created(pipeline)
+      broadcast_pipeline(:pipeline_created, pipeline)
+    end
+
+    def pipeline_started(pipeline)
+      broadcast_pipeline(:pipeline_started, pipeline)
+    end
+
+    def pipeline_completed(pipeline)
+      broadcast_pipeline(:pipeline_completed, pipeline)
+      broadcast_gate_for_pipeline(pipeline)
+    end
+
+    def build_started(build)
+      broadcast_build(:build_started, build)
+    end
+
+    def build_completed(build)
+      broadcast_build(:build_completed, build)
+    end
+
+    def test_run_started_for_ci(test_run)
+      broadcast_pipeline(:test_run_started, test_run.pipeline) if test_run.pipeline
+    end
+
+    def deployment_gate_approved(gate)
+      broadcast_gate(:deployment_gate_approved, gate)
+    end
+
+    def deployment_gate_blocked(gate)
+      broadcast_gate(:deployment_gate_blocked, gate)
+    end
+
+    def deployment_gate_pending(gate)
+      broadcast_gate(:deployment_gate_pending, gate)
+    end
+
+    def notification_created(notification)
+      payload = { type: :notification_created, notification: notification_payload(notification) }
+      broadcast("notifications_#{notification.project_id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    # ----------------------------------------------------------------------
     # Generic primitives — used by the helpers above and by metrics services.
     # ----------------------------------------------------------------------
     def broadcast_progress(kind, test_run)
@@ -352,6 +398,93 @@ class DashboardEventService
         total_duration_ms: test_run.total_duration_ms,
         progress_percentage: test_run.progress_percentage,
         finished_at: test_run.finished_at
+      }
+    end
+
+    # ----------------------------------------------------------------------
+    # CI payload builders
+    # ----------------------------------------------------------------------
+    def broadcast_pipeline(kind, pipeline)
+      payload = { type: kind, pipeline: pipeline_payload(pipeline) }
+      broadcast("pipeline_#{pipeline.id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    def broadcast_build(kind, build)
+      payload = { type: kind, build: build_payload(build) }
+      broadcast("builds", payload)
+      broadcast("pipeline_#{build.pipeline_id}", payload) if build.pipeline_id
+      broadcast("dashboard", payload)
+    end
+
+    def broadcast_gate(kind, gate)
+      payload = { type: kind, deployment_gate: gate_payload(gate) }
+      broadcast("pipeline_#{gate.pipeline_id}", payload)
+      broadcast("dashboard", payload)
+    end
+
+    def broadcast_gate_for_pipeline(pipeline)
+      gate = pipeline.deployment_gate
+      broadcast_gate(:deployment_gate_pending, gate) if gate&.pending?
+    end
+
+    def pipeline_payload(pipeline)
+      {
+        id: pipeline.id,
+        project_id: pipeline.project_id,
+        project_name: pipeline.project&.name,
+        name: pipeline.name,
+        provider: pipeline.provider,
+        status: pipeline.status,
+        branch: pipeline.branch,
+        commit_sha: pipeline.commit_sha,
+        triggered_by: pipeline.triggered_by,
+        created_at: pipeline.created_at
+      }
+    end
+
+    def build_payload(build)
+      {
+        id: build.id,
+        pipeline_id: build.pipeline_id,
+        test_run_id: build.test_run_id,
+        project_id: build.project_id,
+        jenkins_build_number: build.jenkins_build_number,
+        jenkins_job_name: build.jenkins_job_name,
+        branch: build.branch,
+        commit_sha: build.commit_sha,
+        status: build.status,
+        started_at: build.started_at,
+        finished_at: build.finished_at,
+        duration: build.duration
+      }
+    end
+
+    def gate_payload(gate)
+      {
+        id: gate.id,
+        pipeline_id: gate.pipeline_id,
+        test_run_id: gate.test_run_id,
+        project_id: gate.project_id,
+        status: gate.status,
+        reason: gate.reason,
+        requires_approval: gate.requires_approval,
+        decided_at: gate.decided_at,
+        created_at: gate.created_at
+      }
+    end
+
+    def notification_payload(notification)
+      {
+        id: notification.id,
+        project_id: notification.project_id,
+        test_run_id: notification.test_run_id,
+        pipeline_id: notification.pipeline_id,
+        title: notification.title,
+        description: notification.description,
+        category: notification.category,
+        read: notification.read?,
+        created_at: notification.created_at
       }
     end
   end

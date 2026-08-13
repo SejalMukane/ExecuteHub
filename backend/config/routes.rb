@@ -70,6 +70,10 @@ Rails.application.routes.draw do
           post "rotate"
         end
       end
+
+      namespace :ci do
+        post "jenkins/test_runs", to: "jenkins#create_test_run"
+      end
     end
   end
 

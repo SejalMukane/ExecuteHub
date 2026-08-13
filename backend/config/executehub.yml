@@ -69,6 +69,14 @@ defaults: &defaults
     # Test suites that MUST have run and passed (by name) for the gate to pass.
     required_suites: []
 
+  # CI trigger defaults (Week 8). See CiTriggerService.
+  ci:
+    # Fallback test count when Jenkins triggers a run without total_tests or a
+    # test_suite_id. Only used for CI-triggered runs.
+    default_total_tests: 20
+    # Fallback branch when Jenkins omits branch.
+    default_branch: main
+
 development:
   <<: *defaults
 
