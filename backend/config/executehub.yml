@@ -41,6 +41,34 @@ defaults: &defaults
     # Name of the JSON report written by the Playwright "json" reporter.
     results_file: test-results.json
 
+  # Jenkins integration (Week 8). Credentials NEVER live here — they are read
+  # from the environment (JENKINS_URL, JENKINS_USERNAME, JENKINS_API_TOKEN,
+  # JENKINS_JOB_NAME) inside JenkinsService. This section only holds tuning
+  # values and non-secret defaults.
+  jenkins:
+    # Seconds between JenkinsBuildStatusJob polls. Grows exponentially
+    # (5s -> 10s -> 20s -> 40s) up to poll_max_attempts.
+    poll_interval_seconds: 5
+    poll_max_attempts: 30
+    # Connection timeouts for Jenkins HTTP calls (seconds).
+    open_timeout_seconds: 10
+    read_timeout_seconds: 30
+    # Whether the local Jenkins instance requires a CSRF crumb for unsafe
+    # (POST/DELETE) requests. Auto-detected when true; see JenkinsHttpClient.
+    csrf_crumb_enabled: true
+    # Optional shared secret used to validate POST /ci/jenkins/callback
+    # requests (X-Jenkins-Callback-Secret header). Empty disables the check.
+    # Set via the JENKINS_CALLBACK_SECRET env var.
+    callback_shared_secret: ""
+
+  # Release gating defaults (Week 8). Per-project overrides live in
+  # projects.release_policy (jsonb). See ReleaseGateService.
+  release_gate:
+    # Minimum success rate (%) a completed TestRun needs for the gate to pass.
+    minimum_success_rate: 95
+    # Test suites that MUST have run and passed (by name) for the gate to pass.
+    required_suites: []
+
 development:
   <<: *defaults
 
