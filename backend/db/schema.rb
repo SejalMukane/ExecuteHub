@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,6 +53,55 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_browser_sessions_on_user_id"
+  end
+
+  create_table "builds", force: :cascade do |t|
+    t.string "branch"
+    t.string "commit_sha"
+    t.datetime "created_at", null: false
+    t.bigint "duration"
+    t.datetime "finished_at"
+    t.bigint "jenkins_build_number"
+    t.string "jenkins_job_name"
+    t.bigint "pipeline_id"
+    t.bigint "project_id", null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.bigint "test_run_id"
+    t.datetime "updated_at", null: false
+    t.index ["pipeline_id"], name: "index_builds_on_pipeline_id"
+    t.index ["project_id", "jenkins_job_name", "jenkins_build_number"], name: "index_builds_on_project_job_and_build_number", unique: true
+    t.index ["status"], name: "index_builds_on_status"
+    t.index ["test_run_id"], name: "index_builds_on_test_run_id"
+  end
+
+  create_table "ci_api_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_used_at"
+    t.string "name"
+    t.bigint "project_id", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.string "token_prefix"
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_ci_api_tokens_on_project_id"
+    t.index ["token_digest"], name: "index_ci_api_tokens_on_token_digest", unique: true
+  end
+
+  create_table "deployment_gates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "decided_at"
+    t.bigint "pipeline_id", null: false
+    t.bigint "project_id", null: false
+    t.string "reason"
+    t.boolean "requires_approval", default: true, null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "test_run_id"
+    t.datetime "updated_at", null: false
+    t.index ["pipeline_id"], name: "index_deployment_gates_on_pipeline_id", unique: true
+    t.index ["project_id"], name: "index_deployment_gates_on_project_id"
+    t.index ["status"], name: "index_deployment_gates_on_status"
+    t.index ["test_run_id"], name: "index_deployment_gates_on_test_run_id"
   end
 
   create_table "execution_logs", force: :cascade do |t|
@@ -161,10 +210,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
     t.index ["test_run_id"], name: "index_jobs_on_test_run_id"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.string "category", default: "system", null: false
+    t.datetime "created_at", null: false
+    t.string "description"
+    t.bigint "pipeline_id"
+    t.bigint "project_id"
+    t.boolean "read", default: false, null: false
+    t.bigint "test_run_id"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_notifications_on_created_at"
+    t.index ["pipeline_id"], name: "index_notifications_on_pipeline_id"
+    t.index ["project_id", "read"], name: "index_notifications_on_project_id_and_read"
+    t.index ["test_run_id"], name: "index_notifications_on_test_run_id"
+  end
+
+  create_table "pipelines", force: :cascade do |t|
+    t.string "branch"
+    t.string "ci_key", null: false
+    t.string "commit_sha"
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.bigint "project_id", null: false
+    t.string "provider", default: "jenkins", null: false
+    t.string "status", default: "pending", null: false
+    t.string "triggered_by", default: "jenkins", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ci_key"], name: "index_pipelines_on_ci_key", unique: true
+    t.index ["project_id"], name: "index_pipelines_on_project_id"
+    t.index ["status"], name: "index_pipelines_on_status"
+  end
+
   create_table "projects", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
+    t.jsonb "release_policy", default: {}, null: false
     t.string "repository_url"
     t.bigint "team_id", null: false
     t.datetime "updated_at", null: false
@@ -228,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
     t.integer "failed_tests", default: 0, null: false
     t.datetime "finished_at"
     t.integer "passed_tests", default: 0, null: false
+    t.bigint "pipeline_id"
     t.float "progress_percentage", default: 0.0, null: false
     t.bigint "project_id", null: false
     t.integer "queued_jobs", default: 0, null: false
@@ -241,6 +324,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
     t.integer "total_tests", default: 0, null: false
     t.integer "total_videos", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.index ["pipeline_id"], name: "index_test_runs_on_pipeline_id"
     t.index ["project_id", "created_at"], name: "index_test_runs_on_project_id_and_created_at"
     t.index ["project_id"], name: "index_test_runs_on_project_id"
     t.index ["status"], name: "index_test_runs_on_status"
@@ -286,6 +370,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
   add_foreign_key "artifacts", "jobs"
   add_foreign_key "artifacts", "test_runs"
   add_foreign_key "browser_sessions", "users"
+  add_foreign_key "builds", "pipelines"
+  add_foreign_key "builds", "projects"
+  add_foreign_key "builds", "test_runs"
+  add_foreign_key "ci_api_tokens", "projects"
+  add_foreign_key "deployment_gates", "pipelines"
+  add_foreign_key "deployment_gates", "projects"
+  add_foreign_key "deployment_gates", "test_runs"
   add_foreign_key "execution_logs", "jobs"
   add_foreign_key "github_integrations", "users"
   add_foreign_key "github_repositories", "github_integrations"
@@ -294,11 +385,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_183158) do
   add_foreign_key "github_webhooks", "github_repositories"
   add_foreign_key "job_retries", "jobs"
   add_foreign_key "jobs", "test_runs"
+  add_foreign_key "notifications", "pipelines"
+  add_foreign_key "notifications", "projects"
+  add_foreign_key "notifications", "test_runs"
+  add_foreign_key "pipelines", "projects"
   add_foreign_key "projects", "teams"
   add_foreign_key "projects", "users"
   add_foreign_key "test_reports", "test_runs"
   add_foreign_key "test_results", "jobs"
   add_foreign_key "test_results", "test_runs"
+  add_foreign_key "test_runs", "pipelines"
   add_foreign_key "test_runs", "projects"
   add_foreign_key "test_runs", "test_suites"
   add_foreign_key "users", "teams"

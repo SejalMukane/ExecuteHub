@@ -145,6 +145,43 @@ export interface ActivityEvent {
   timestamp: string;
 }
 
+export interface PipelineEvent {
+  id: number;
+  project_id: number;
+  project_name: string | null;
+  name: string;
+  provider: string;
+  status: string;
+  branch: string | null;
+  commit_sha: string | null;
+  triggered_by: string | null;
+  created_at: string | null;
+}
+
+export interface DeploymentGateEvent {
+  id: number;
+  pipeline_id: number;
+  test_run_id: number | null;
+  project_id: number;
+  status: string;
+  reason: string | null;
+  requires_approval: boolean;
+  decided_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationEvent {
+  id: number;
+  project_id: number | null;
+  test_run_id: number | null;
+  pipeline_id: number | null;
+  title: string;
+  description: string | null;
+  category: string;
+  read: boolean;
+  created_at: string;
+}
+
 export type RealtimeMessage =
   | { type: "job_created" | "job_started" | "job_completed" | "job_failed"; job: JobEvent }
   | { type: "test_run_started" | "test_run_completed" | "test_run_progress_updated"; test_run: RunProgressEvent }
@@ -157,7 +194,16 @@ export type RealtimeMessage =
   | { type: "test_result_completed"; test_result: TestResultEvent }
   | { type: "test_run_analytics_updated"; test_run_id: number }
   | { type: "execution_finished"; test_run_id: number; project_name: string; status: string }
-  | { type: "metrics_updated"; metrics: DashboardMetricsEvent; queue: QueueMetricsEvent };
+  | { type: "metrics_updated"; metrics: DashboardMetricsEvent; queue: QueueMetricsEvent }
+  | {
+      type: "pipeline_created" | "pipeline_started" | "pipeline_completed" | "pipeline_test_run_started";
+      pipeline: PipelineEvent;
+    }
+  | {
+      type: "deployment_gate_approved" | "deployment_gate_blocked" | "deployment_gate_pending";
+      deployment_gate: DeploymentGateEvent;
+    }
+  | { type: "notification_created"; notification: NotificationEvent };
 
 // One ActionCable consumer per token so login/logout never cross wires.
 const consumers = new Map<string, ReturnType<typeof createConsumer>>();

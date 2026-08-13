@@ -11,6 +11,16 @@ export class ApiError extends Error {
   }
 }
 
+function queryString(params?: Record<string, string | number | boolean | undefined>): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
 async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; token?: string | null } = {}
@@ -378,6 +388,97 @@ export interface QueueStats {
   failed_jobs: number;
 }
 
+export type PipelineProvider = "jenkins" | "github_actions";
+export type PipelineStatus =
+  | "pending"
+  | "running"
+  | "passed"
+  | "failed"
+  | "cancelled"
+  | "blocked";
+
+export interface Pipeline {
+  id: number;
+  project_id: number;
+  project_name: string;
+  name: string;
+  provider: PipelineProvider;
+  status: PipelineStatus;
+  branch: string;
+  commit_sha: string | null;
+  triggered_by: string | null;
+  ci_key: string;
+  build_count: number;
+  test_run_count: number;
+  gate_status: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+export interface PipelineDetail extends Pipeline {
+  updated_at: string;
+}
+
+export type BuildStatus =
+  | "pending"
+  | "running"
+  | "passed"
+  | "failed"
+  | "cancelled"
+  | "error";
+
+export interface Build {
+  id: number;
+  project_id: number;
+  pipeline_id: number | null;
+  test_run_id: number | null;
+  jenkins_job_name: string;
+  jenkins_build_number: number;
+  status: BuildStatus;
+  branch: string;
+  commit_sha: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  duration: number | null;
+  duration_seconds: number | null;
+  url: string;
+}
+
+export type GateStatus = "pending" | "approved" | "blocked" | "expired";
+
+export interface DeploymentGate {
+  id: number;
+  project_id: number;
+  pipeline_id: number;
+  test_run_id: number | null;
+  status: GateStatus;
+  reason: string | null;
+  requires_approval: boolean;
+  decided_at: string | null;
+  created_at: string;
+}
+
+export interface PipelineDetailResponse {
+  pipeline: PipelineDetail;
+  builds: Build[];
+  test_runs: TestRun[];
+  deployment_gate: DeploymentGate | null;
+}
+
+export type NotificationCategory = "system" | "test_run" | "pipeline" | "deployment_gate";
+
+export interface Notification {
+  id: number;
+  project_id: number | null;
+  test_run_id: number | null;
+  pipeline_id: number | null;
+  title: string;
+  description: string | null;
+  category: NotificationCategory;
+  read: boolean;
+  created_at: string;
+}
+
 export const api = {
   register: (name: string, email: string, password: string, passwordConfirmation: string) =>
     request<AuthResponse>("/register", {
@@ -585,4 +686,62 @@ export const api = {
 
   getTestRunProgress: (token: string, id: number) =>
     request<{ test_run: TestRunProgress }>(`/test_runs/${id}/progress`, { token }),
+
+  listPipelines: (token: string, params?: { project_id?: number; status?: PipelineStatus }) =>
+    request<{ pipelines: Pipeline[] }>(
+      `/pipelines${queryString(params)}`,
+      { token }
+    ),
+
+  getPipeline: (token: string, id: number) =>
+    request<PipelineDetailResponse>(`/pipelines/${id}`, { token }),
+
+  getPipelineStatus: (token: string, id: number) =>
+    request<{
+      pipeline: Pipeline;
+      test_run_progress: TestRunProgress | null;
+      deployment_gate: DeploymentGate | null;
+    }>(`/pipelines/${id}/status`, { token }),
+
+  listBuilds: (token: string, params?: { project_id?: number; pipeline_id?: number; status?: BuildStatus }) =>
+    request<{ builds: Build[] }>(`/builds${queryString(params)}`, { token }),
+
+  getBuild: (token: string, id: number) =>
+    request<{ build: Build }>(`/builds/${id}`, { token }),
+
+  getDeploymentGate: (token: string, id: number) =>
+    request<{ deployment_gate: DeploymentGate }>(`/deployment_gates/${id}`, { token }),
+
+  approveDeploymentGate: (token: string, id: number) =>
+    request<{ deployment_gate: DeploymentGate }>(`/deployment_gates/${id}/approve`, {
+      method: "POST",
+      token,
+    }),
+
+  rejectDeploymentGate: (token: string, id: number) =>
+    request<{ deployment_gate: DeploymentGate }>(`/deployment_gates/${id}/reject`, {
+      method: "POST",
+      token,
+    }),
+
+  listNotifications: (token: string, params?: { project_id?: number; unread?: boolean }) =>
+    request<{ notifications: Notification[] }>(
+      `/notifications${queryString(params)}`,
+      { token }
+    ),
+
+  getNotification: (token: string, id: number) =>
+    request<{ notification: Notification }>(`/notifications/${id}`, { token }),
+
+  markNotificationRead: (token: string, id: number) =>
+    request<{ notification: Notification }>(`/notifications/${id}/read`, {
+      method: "PATCH",
+      token,
+    }),
+
+  markAllNotificationsRead: (token: string, projectId?: number) =>
+    request<{ updated: boolean }>(
+      `/notifications/read_all${queryString(projectId ? { project_id: projectId } : undefined)}`,
+      { method: "POST", token }
+    ),
 };

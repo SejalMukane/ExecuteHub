@@ -150,6 +150,13 @@ function eventType(
       return "error";
     case "job_started":
     case "test_run_started":
+    case "pipeline_created":
+    case "pipeline_started":
+    case "pipeline_completed":
+    case "pipeline_test_run_started":
+    case "deployment_gate_pending":
+    case "deployment_gate_approved":
+    case "deployment_gate_blocked":
       return "info";
     case "job_created":
     case "queue_updated":
@@ -352,6 +359,94 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             timestamp: new Date().toISOString(),
           },
         });
+        break;
+      case "pipeline_created":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Pipeline "${message.pipeline.name}" created (${message.pipeline.status})`,
+            type: "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "pipeline_started":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Pipeline "${message.pipeline.name}" started`,
+            type: "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "pipeline_test_run_started":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Test run started for pipeline "${message.pipeline.name}"`,
+            type: "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        break;
+      case "pipeline_completed":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Pipeline "${message.pipeline.name}" ${message.pipeline.status}`,
+            type: message.pipeline.status === "passed" ? "success" : message.pipeline.status === "blocked" || message.pipeline.status === "failed" ? "error" : "info",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        if (message.pipeline.status === "passed") {
+          notify(`Pipeline "${message.pipeline.name}" passed`, "success");
+        } else {
+          notify(`Pipeline "${message.pipeline.name}" ${message.pipeline.status}`, "error");
+        }
+        break;
+      case "deployment_gate_approved":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Deployment gate #${message.deployment_gate.id} approved`,
+            type: "success",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        notify("Deployment gate approved", "success");
+        break;
+      case "deployment_gate_pending":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Deployment gate #${message.deployment_gate.id} awaiting approval`,
+            type: "warning",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        notify("Deployment gate awaiting approval", "warning");
+        break;
+      case "deployment_gate_blocked":
+        dispatch({
+          type: "ADD_ACTIVITY",
+          payload: {
+            id: activityId(),
+            text: `Deployment gate #${message.deployment_gate.id} blocked: ${message.deployment_gate.reason ?? "no reason given"}`,
+            type: "error",
+            timestamp: new Date().toISOString(),
+          },
+        });
+        notify("Deployment gate blocked", "error");
+        break;
+      case "notification_created":
+        notify(message.notification.title, "info");
         break;
     }
   }, []);

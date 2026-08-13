@@ -169,7 +169,7 @@ class DashboardEventService
     end
 
     def test_run_started_for_ci(test_run)
-      broadcast_pipeline(:test_run_started, test_run.pipeline) if test_run.pipeline
+      broadcast_pipeline(:pipeline_test_run_started, test_run.pipeline) if test_run.pipeline
     end
 
     def deployment_gate_approved(gate)

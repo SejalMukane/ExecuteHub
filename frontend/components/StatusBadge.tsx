@@ -26,6 +26,7 @@ export function statusTone(status: string): StatusTone {
   switch (status) {
     case "queued":
     case "retrying":
+    case "pending":
       return "blue";
     case "running":
     case "scheduling":
@@ -34,9 +35,11 @@ export function statusTone(status: string): StatusTone {
     case "completed":
     case "success":
     case "passed":
+    case "approved":
       return "green";
     case "failed":
     case "error":
+    case "blocked":
       return "red";
     default:
       return "neutral";
