@@ -71,6 +71,21 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :pipelines, only: [:index, :show] do
+        member do
+          get "status"
+        end
+      end
+
+      resources :builds, only: [:index, :show]
+
+      resources :deployment_gates, only: [:show] do
+        member do
+          post "approve"
+          post "reject"
+        end
+      end
+
       namespace :ci do
         post "jenkins/test_runs", to: "jenkins#create_test_run"
         post "jenkins/callback", to: "jenkins#callback"

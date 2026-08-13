@@ -3,7 +3,7 @@ FactoryBot.define do
     association :project
     association :pipeline
     association :test_run
-    jenkins_build_number { 42 }
+    sequence(:jenkins_build_number) { |n| 100 + n }
     jenkins_job_name { "ExecuteHub-App" }
     branch { "main" }
     commit_sha { SecureRandom.hex(20) }
