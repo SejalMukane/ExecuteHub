@@ -32,6 +32,7 @@ class ResultAggregator
     return unless all_jobs_terminal?
 
     aggregate!
+    evaluate_release_gate!
     @test_run
   end
 
@@ -71,5 +72,13 @@ class ResultAggregator
 
   def log(message)
     Rails.logger.info("[ResultAggregator] TestRun ##{@test_run.id}: #{message}")
+  end
+
+  # CI runs (those born from a Pipeline) get their release gate evaluated now
+  # that the evidence is final. Manual runs have no pipeline and are skipped.
+  def evaluate_release_gate!
+    return unless @test_run.pipeline_id
+
+    DeploymentGateService.evaluate(@test_run)
   end
 end

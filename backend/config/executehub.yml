@@ -68,6 +68,10 @@ defaults: &defaults
     minimum_success_rate: 95
     # Test suites that MUST have run and passed (by name) for the gate to pass.
     required_suites: []
+    # When true, a passing run leaves the DeploymentGate pending a human
+    # approval instead of auto-approving. Overridable per project via
+    # projects.release_policy["requires_manual_approval"].
+    requires_manual_approval: false
 
   # CI trigger defaults (Week 8). See CiTriggerService.
   ci:

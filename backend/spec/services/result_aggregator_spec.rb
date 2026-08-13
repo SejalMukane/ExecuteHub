@@ -127,6 +127,40 @@ RSpec.describe ResultAggregator, type: :service do
         expect(report.total_tests).to eq(25)
         expect(report.failed_tests).to eq(5)
       end
+
+      it "evaluates the release gate for a CI run and passes the pipeline" do
+        pipeline = create(:pipeline, status: :running)
+        test_run = create(:test_run, project: pipeline.project, pipeline: pipeline, status: :queued)
+        create(:job, test_run: test_run, status: :completed, passed_tests: 40)
+        allow(JenkinsService).to receive(:set_build_description)
+
+        described_class.call(test_run)
+
+        expect(test_run.reload.status).to eq("completed")
+        expect(pipeline.reload.status).to eq("passed")
+        expect(DeploymentGate.find_by(pipeline: pipeline)).to be_approved
+      end
+
+      it "blocks the pipeline when a CI run fails" do
+        pipeline = create(:pipeline, status: :running)
+        test_run = create(:test_run, project: pipeline.project, pipeline: pipeline, status: :queued)
+        create(:job, test_run: test_run, status: :failed, failed_tests: 5)
+        allow(JenkinsService).to receive(:set_build_description)
+
+        described_class.call(test_run)
+
+        expect(test_run.reload.status).to eq("failed")
+        expect(pipeline.reload.status).to eq("blocked")
+      end
+
+      it "does not create a gate for manual runs" do
+        test_run = create(:test_run, status: :queued)
+        create(:job, test_run: test_run, status: :completed, passed_tests: 40)
+
+        described_class.call(test_run)
+
+        expect(DeploymentGate.where(test_run: test_run)).to be_empty
+      end
     end
   end
 end

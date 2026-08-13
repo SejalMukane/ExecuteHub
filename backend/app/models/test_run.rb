@@ -31,6 +31,10 @@ class TestRun < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :for_project, ->(project) { where(project: project) }
 
+  def terminal?
+    %w[completed failed cancelled].include?(status)
+  end
+
   # Live counters for the distributed execution dashboard. The four job buckets
   # partition the run's jobs (total = queued + running + completed + failed),
   # so a dashboard can render them without re-querying every Job.
