@@ -64,6 +64,12 @@ Rails.application.routes.draw do
       get    "github/projects/:project_id/repository", to: "github_repositories#show"
 
       post "github/webhooks/:slug", to: "github_webhooks#receive"
+
+      resources :ci_tokens, only: [:index, :create, :destroy] do
+        member do
+          post "rotate"
+        end
+      end
     end
   end
 
