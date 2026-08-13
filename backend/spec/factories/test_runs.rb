@@ -10,5 +10,18 @@ FactoryBot.define do
     failed_jobs { 0 }
     queued_jobs { 0 }
     progress_percentage { 0.0 }
+
+    trait :completed do
+      status { "completed" }
+      finished_at { Time.current }
+      progress_percentage { 100.0 }
+      completed_jobs { 1 }
+    end
+
+    trait :failed do
+      status { "failed" }
+      finished_at { Time.current }
+      progress_percentage { 100.0 }
+    end
   end
 end

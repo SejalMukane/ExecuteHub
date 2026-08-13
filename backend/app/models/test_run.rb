@@ -1,10 +1,12 @@
 class TestRun < ApplicationRecord
   belongs_to :project
   belongs_to :test_suite, optional: true
+  belongs_to :pipeline, optional: true
   has_many :jobs, dependent: :destroy
   has_many :artifacts, dependent: :destroy
   has_many :test_results, dependent: :destroy
   has_one :test_report, dependent: :destroy
+  has_one :deployment_gate, dependent: :destroy
 
   enum :status, {
     queued: "queued",
