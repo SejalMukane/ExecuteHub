@@ -16,6 +16,10 @@ module Api
         before_action :set_project
         before_action :authorize_project_scope, only: [:create_test_run]
 
+        skip_before_action :authenticate_ci_request, only: [:callback]
+        before_action :authenticate_callback_secret, only: [:callback]
+        before_action :set_build_by_identity, only: [:callback]
+
         def create_test_run
           result = CiTriggerService.call(
             project: @project,
@@ -39,6 +43,27 @@ module Api
           render json: { error: e.message }, status: :unprocessable_entity
         end
 
+        # POST /api/v1/ci/jenkins/callback
+        #
+        # Jenkins webhook: reports a build transition (started / succeeded /
+        # failed / aborted). Authenticated by the shared secret in the
+        # X-Jenkins-Callback-Secret header (constant-time comparison), then the
+        # build identity is validated against an existing Build. Duplicate
+        # webhooks are no-ops (JenkinsBuildCallbackService is idempotent).
+        def callback
+          result = JenkinsBuildCallbackService.call(
+            build: @build,
+            jenkins_status: params[:build_status] || params[:result]
+          )
+
+          render json: {
+            build: build_response(result.build),
+            pipeline: result.build.pipeline ? pipeline_response(result.build.pipeline) : nil,
+            test_run: result.build.test_run ? test_run_response(result.build.test_run) : nil,
+            applied: result.applied
+          }
+        end
+
         private
 
         def set_project
@@ -48,6 +73,28 @@ module Api
 
         def authorize_project_scope
           authorize_ci_project!(@project)
+        end
+
+        # Fail closed: when no secret is configured the endpoint is disabled,
+        # and a provided secret must match exactly (constant-time compare).
+        def authenticate_callback_secret
+          configured = Rails.configuration.executehub[:jenkins]
+                       .to_h.with_indifferent_access[:callback_shared_secret].to_s
+          provided = request.headers["X-Jenkins-Callback-Secret"].to_s
+
+          valid = configured.present? && ActiveSupport::SecurityUtils.secure_compare(configured, provided)
+          render json: { error: "Unauthorized" }, status: :unauthorized unless valid
+        end
+
+        # The callback payload must reference a Build ExecuteHub already knows;
+        # never trust a project_id that does not resolve to one.
+        def set_build_by_identity
+          @build = Build.find_by(
+            project_id: params[:project_id],
+            jenkins_job_name: params[:jenkins_job_name],
+            jenkins_build_number: params[:jenkins_build_number]
+          )
+          render json: { error: "Build not found" }, status: :not_found unless @build
         end
 
         def pipeline_response(pipeline)

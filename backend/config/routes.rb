@@ -73,6 +73,7 @@ Rails.application.routes.draw do
 
       namespace :ci do
         post "jenkins/test_runs", to: "jenkins#create_test_run"
+        post "jenkins/callback", to: "jenkins#callback"
       end
     end
   end
