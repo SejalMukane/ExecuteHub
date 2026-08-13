@@ -126,7 +126,7 @@ class JenkinsService
 
     # A freshly configured HTTP client for the current environment.
     def build_client
-      settings = Rails.configuration.executehub.fetch("jenkins", {})
+      settings = Rails.configuration.executehub[:jenkins] || {}
       JenkinsHttpClient.new(
         base_url: base_url,
         username: username,
