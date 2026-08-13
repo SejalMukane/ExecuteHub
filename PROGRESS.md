@@ -2,7 +2,7 @@
 
 > Keeps track of what has been implemented. Update this file after every meaningful change.
 
-**Last updated:** 13 August 2026 (Week 7 complete — S3 artifact storage, test reporting & analytics; analytics rate fix f57b365)
+**Last updated:** 13 August 2026 (Week 8 complete — Jenkins CI/CD: trigger/idempotent tests, release gates, notifications, CI/CD frontend, local Docker Jenkins)
 ---
 
 ## Project Overview
@@ -762,6 +762,67 @@ Open `http://localhost:3000` → register → dashboard.
 
 ---
 
+## Week 8 — CI/CD Pipeline (Jenkins)
+
+**Status:** ✅ Complete
+
+**Goal:** Turn ExecuteHub into the CI/CD brain that integrates with Jenkins — trigger test runs from Jenkins, track builds idempotently, settle release gates, notify users, watch it all on new CI/CD + Notifications pages, and run a local Docker Jenkins for development.
+
+### Backend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| Jenkins HTTP client | `JenkinsHttpClient` — Basic auth, auto CSRF crumb for POST/DELETE, error mapping (401/403/404/429/5xx/timeout/connection refused) | ✅ Done |
+| Jenkins service | `JenkinsService` — `trigger_build`, `build_status` (normalizes SUCCESS→passed/FAILURE/UNSTABLE→failed/ABORTED→cancelled), `build_info`, `cancel_build`, `latest_build`, best-effort `set_build_description`, `build_url`, `job_name`; credentials only from `JENKINS_URL`/`JENKINS_USERNAME`/`JENKINS_API_TOKEN`/`JENKINS_JOB_NAME` | ✅ Done |
+| Pipeline/Build/Gate models | `pipelines` (unique `ci_key` `jenkins:<job>:<build>`), `builds` (unique project+job+build-number), `deployment_gates` (unique per pipeline); `projects.release_policy` jsonb overrides | ✅ Done |
+| CI tokens | `CiApiTokenService` + `CiAuthenticatable` — tokens hashed (SHA-256), revocable/rotatable, plaintext returned exactly once, never logged | ✅ Done |
+| CI trigger endpoint | `CiTriggerService` (idempotent find-or-create Pipeline/Build/TestRun) + `POST /api/v1/ci/jenkins/test_runs` (Bearer `eh_…` or `X-ExecuteHub-Token`) | ✅ Done |
+| Jenkins callback | `JenkinsBuildCallbackService` (single owner of Build/Pipeline transitions) + `POST /api/v1/ci/jenkins/callback` — shared-secret `X-Jenkins-Callback-Secret` (constant-time, fails closed), unknown statuses → error, duplicate webhooks are no-ops | ✅ Done |
+| Poller | `JenkinsBuildStatusJob` — no continuous polling; self-rescheduling with exponential backoff 5→10→20→40s, max 30 attempts, swallows `JenkinsHttpClient::Error` | ✅ Done |
+| Release gates | `ReleaseGateService` (pure, immutable Result; success-rate/suite/manual-approval policy) + `DeploymentGateService` (auto-approve/pending-manual/block; best-effort Jenkins description; notifications) | ✅ Done |
+| Notifications | `Notification` model (category enum, unread scope) + `NotificationService` + `NotificationsController`; created on gate/pipeline lifecycle events | ✅ Done |
+| CI/CD APIs | `PipelinesController` (index/show/status), `BuildsController`, `DeploymentGatesController` (approve/reject, admin/developer only); `GET /pipelines/:id/status` accepts a project CI token so Jenkins can poll the gate | ✅ Done |
+| CI lookups | `Rails.configuration.executehub` read via `[:key]` (two real `fetch("key")`→`{}` bugs fixed in the worker + JenkinsService) | ✅ Done |
+
+### Frontend
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| CI/CD page | `/ci-cd` — pipelines table (name, project, branch, commit, status, gate, builds, created) → detail | ✅ Done |
+| Pipeline detail | `/ci-cd/[id]` — builds list (Jenkins URL, duration), test runs, release-gate card with Approve/Reject (pending), statuses approved/blocked | ✅ Done |
+| Notifications page | `/notifications` — list, unread emphasis, mark single read, mark all read | ✅ Done |
+| API client + realtime | `lib/api.ts` CI types/methods; `lib/realtime.ts` + `RealtimeContext` handle pipeline/gate/notification events with toasts; `StatusBadge` tones (pending/approved/blocked); `DashboardShell` nav (CI/CD, Notifications) | ✅ Done |
+
+### Deliverable
+
+✅ Jenkins triggers an ExecuteHub test run with a `jenkins:<job>:<build>` key, tracks the build, and settles a release gate whose outcome (approved/blocked/pending) is reflected to Jenkins, the pipeline, the DB and the UI in one place. Local Docker Jenkins is provided via `docker-compose.dev.yml` and fully documented in `JENKINS_SETUP.md` with a reference `Jenkinsfile` (checkout → install → build → trigger ExecuteHub → wait for gate → gate check → deploy stub).
+
+### Database (new tables)
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| `pipelines` | ci_key (unique), project_id, name, provider, status, branch, commit_sha, triggered_by | one per Jenkins build |
+| `builds` | project_id + jenkins_job_name + jenkins_build_number (unique), pipeline_id, test_run_id, status, started/finished_at, duration | composite uniqueness enforces idempotency |
+| `deployment_gates` | pipeline_id (unique), project_id, test_run_id, status, reason, requires_approval, decided_at | |
+| `ci_api_tokens` | project_id, name, token_prefix, token_digest (unique), revoked_at, last_used_at | |
+| `notifications` | project_id, category, title, description, read, test_run_id/pipeline_id | |
+
+### Testing
+
+- **RSpec (547 examples, 0 failures)** — JenkinsHttpClient/JenkinsService (28), CiTrigger/Build/Pipeline/Gate models, CiApiTokenService/Authenticatable, CiTriggerService (idempotence), JenkinsBuildCallbackService (idempotence, best-effort notifications), DeploymentGateService (decision matrix, Jenkins + notification failures swallowed), JenkinsBuildStatusJob (backoff + attempt cap + ConnectionError), notifications, guards against other-project tokens; pollers mocked — never real Jenkins requests.
+- **Frontend** — Jest 3 suites / 11 tests pass; `npm run build` succeeds (22 routes incl. `/ci-cd`, `/ci-cd/[id]`, `/notifications`).
+
+### Key Files — Week 8
+
+- `backend/app/services/jenkins_http_client.rb`, `jenkins_service.rb`, `release_gate_service.rb`, `deployment_gate_service.rb`, `ci_trigger_service.rb`, `jenkins_build_callback_service.rb`, `notification_service.rb`, `ci_api_token_service.rb`
+- `backend/app/controllers/api/v1/ci/jenkins_controller.rb`, `pipelines_controller.rb`, `builds_controller.rb`, `deployment_gates_controller.rb`, `notifications_controller.rb`, `ci_tokens_controller.rb`
+- `backend/app/workers/jenkins_build_status_job.rb`
+- `backend/app/controllers/concerns/ci_authenticatable.rb`
+- `Jenkinsfile`, `docker-compose.dev.yml`, `JENKINS_SETUP.md`
+- `frontend/app/ci-cd/page.tsx`, `frontend/app/ci-cd/[id]/page.tsx`, `frontend/app/notifications/page.tsx`, `frontend/lib/api.ts`, `frontend/lib/realtime.ts`, `frontend/context/RealtimeContext.tsx`
+
+---
+
 ## Known Notes / Gotchas
 
 - `rails` command is not on PATH by default — use `ruby bin\rails` or add `C:\Ruby33-x64\bin` to PATH.
@@ -780,7 +841,7 @@ Open `http://localhost:3000` → register → dashboard.
 - [x] Week 4 — Real Browser Execution in Docker ✅ (Playwright runner + Dockerfile, DockerService + WorkerExecutor, real execution in isolated containers, ExecutionLog + Artifact models + ArtifactStore, report parser, Jobs/Artifacts APIs, Workers page, RSpec + smoke coverage)
 - [x] Week 6 — Real-Time Mission Control Dashboard ✅ (Action Cable channels, DashboardEventService, live metrics, React RealtimeContext/hooks, live pages, connection banner, toasts, Jest tests)
 - [x] Week 7 — S3 Artifact Storage, Test Reporting & Analytics ✅ (S3StorageService + local fallback, artifact metadata in PG, upload worker + cleanup, TestResult/TestReport + analytics, artifact/report/results/analytics APIs, artifacts + report + failure-debug + analytics pages)
+- [x] Week 8 — CI/CD Pipeline (Jenkins) ✅ (JenkinsHttpClient + JenkinsService, CI tokens, idempotent trigger + callback, deployment gates, JenkinsBuildStatusJob poller, notifications, CI/CD + Notifications pages, Jenkinsfile + docker-compose.dev.yml + JENKINS_SETUP.md, 547 RSpec green)
 - [ ] Session history, idle cleanup, reports
-- [ ] Docker Compose local stack
-- [ ] Kubernetes + Jenkins + AWS deployment
+- [ ] Kubernetes + AWS deployment
 - [ ] Prometheus/Grafana monitoring

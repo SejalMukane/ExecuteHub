@@ -113,9 +113,13 @@ class DeploymentGateService
     end
   end
 
+  # Best-effort: a notification failure (DB/broadcast) must never break the
+  # gate decision or the pipeline transition already applied above.
   def notify(title:, description:, category:)
     NotificationService.notify(project: @pipeline.project, title: title,
                                description: description, category: category,
                                test_run: @test_run, pipeline: @pipeline)
+  rescue StandardError => e
+    Rails.logger.warn("[DeploymentGateService] Notification failed: #{e.message}")
   end
 end

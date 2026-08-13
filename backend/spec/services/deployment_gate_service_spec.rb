@@ -84,6 +84,14 @@ RSpec.describe DeploymentGateService do
       expect { evaluate }.not_to raise_error
       expect(result_of(evaluate).gate).to be_approved
     end
+
+    it "swallows in-app notification failures and still settles the gate" do
+      allow(NotificationService).to receive(:notify).and_raise(StandardError, "boom")
+
+      expect { evaluate }.not_to raise_error
+      expect(pipeline.reload.status).to eq("passed")
+      expect(result_of(evaluate).gate).to be_approved
+    end
   end
 
   def result_of(result)

@@ -88,9 +88,8 @@ class JenkinsBuildCallbackService
     pipeline&.update!(status: :failed)
     if pipeline
       DashboardEventService.pipeline_completed(pipeline)
-      NotificationService.notify(project: pipeline.project, title: "Pipeline failed",
-                                 description: "#{pipeline.name} failed on Jenkins build ##{@build.jenkins_build_number}.",
-                                 category: :pipeline, pipeline: pipeline, test_run: @build.test_run)
+      notify(title: "Pipeline failed",
+             description: "#{pipeline.name} failed on Jenkins build ##{@build.jenkins_build_number}.")
     end
   end
 
@@ -99,10 +98,20 @@ class JenkinsBuildCallbackService
     pipeline&.update!(status: :cancelled)
     if pipeline
       DashboardEventService.pipeline_completed(pipeline)
-      NotificationService.notify(project: pipeline.project, title: "Pipeline cancelled",
-                                 description: "#{pipeline.name} was cancelled on Jenkins build ##{@build.jenkins_build_number}.",
-                                 category: :pipeline, pipeline: pipeline, test_run: @build.test_run)
+      notify(title: "Pipeline cancelled",
+             description: "#{pipeline.name} was cancelled on Jenkins build ##{@build.jenkins_build_number}.")
     end
+  end
+
+  # Best-effort: a notification failure (DB/broadcast) must never roll back the
+  # applied pipeline transition or make the webhook respond 500 — Jenkins will
+  # retry, and idempotency makes the retry harmless.
+  def notify(title:, description:)
+    NotificationService.notify(project: @build.pipeline.project, title: title,
+                               description: description, category: :pipeline,
+                               pipeline: @build.pipeline, test_run: @build.test_run)
+  rescue StandardError => e
+    Rails.logger.warn("[JenkinsBuildCallbackService] Notification failed: #{e.message}")
   end
 
   def cancel_in_flight_run

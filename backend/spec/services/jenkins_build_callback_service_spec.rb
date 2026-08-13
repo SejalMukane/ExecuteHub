@@ -68,5 +68,21 @@ RSpec.describe JenkinsBuildCallbackService do
       expect(pipeline.reload.status).to eq("running")
       expect(run.reload.status).to eq("running")
     end
+
+    it "swallows notification failures and still applies the transition" do
+      allow(NotificationService).to receive(:notify).and_raise(StandardError, "boom")
+
+      expect { call("FAILURE") }.not_to raise_error
+      expect(build.reload.status).to eq("failed")
+      expect(pipeline.reload.status).to eq("failed")
+    end
+
+    it "swallows notification failures when the pipeline is cancelled" do
+      allow(NotificationService).to receive(:notify).and_raise(StandardError, "boom")
+
+      expect { call("ABORTED") }.not_to raise_error
+      expect(build.reload.status).to eq("cancelled")
+      expect(pipeline.reload.status).to eq("cancelled")
+    end
   end
 end
