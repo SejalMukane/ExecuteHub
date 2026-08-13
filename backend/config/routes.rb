@@ -75,6 +75,15 @@ Rails.application.routes.draw do
         post "jenkins/test_runs", to: "jenkins#create_test_run"
         post "jenkins/callback", to: "jenkins#callback"
       end
+
+      resources :notifications, only: [:index, :show] do
+        member do
+          patch "read"
+        end
+        collection do
+          post "read_all"
+        end
+      end
     end
   end
 

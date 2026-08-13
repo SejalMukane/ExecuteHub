@@ -49,17 +49,26 @@ class DeploymentGateService
         gate.update!(status: :pending, decided_at: nil)
         @pipeline.update!(status: :running) unless @pipeline.terminal?
         DashboardEventService.deployment_gate_pending(gate)
+        notify(title: "Deployment gate awaiting approval",
+               description: "The release gate for #{@pipeline.name} passed its tests and is ready to approve.",
+               category: :deployment_gate)
       else
         gate.approve!
         @pipeline.update!(status: :passed)
         DashboardEventService.deployment_gate_approved(gate)
         DashboardEventService.pipeline_completed(@pipeline)
+        notify(title: "Pipeline passed",
+               description: "#{@pipeline.name} passed its release gate and can be deployed.",
+               category: :deployment_gate)
       end
     else
       gate.block!(decision.reason)
       @pipeline.update!(status: :blocked)
       DashboardEventService.deployment_gate_blocked(gate)
       DashboardEventService.pipeline_completed(@pipeline)
+      notify(title: "Pipeline blocked",
+             description: "#{@pipeline.name} was blocked: #{decision.reason}",
+             category: :deployment_gate)
     end
   end
 
@@ -102,5 +111,11 @@ class DeploymentGateService
     when "pending" then "#{summary} — awaiting approval"
     else summary
     end
+  end
+
+  def notify(title:, description:, category:)
+    NotificationService.notify(project: @pipeline.project, title: title,
+                               description: description, category: category,
+                               test_run: @test_run, pipeline: @pipeline)
   end
 end

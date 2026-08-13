@@ -86,13 +86,23 @@ class JenkinsBuildCallbackService
   def mark_pipeline_failed
     pipeline = @build.pipeline
     pipeline&.update!(status: :failed)
-    DashboardEventService.pipeline_completed(pipeline) if pipeline
+    if pipeline
+      DashboardEventService.pipeline_completed(pipeline)
+      NotificationService.notify(project: pipeline.project, title: "Pipeline failed",
+                                 description: "#{pipeline.name} failed on Jenkins build ##{@build.jenkins_build_number}.",
+                                 category: :pipeline, pipeline: pipeline, test_run: @build.test_run)
+    end
   end
 
   def mark_pipeline_cancelled
     pipeline = @build.pipeline
     pipeline&.update!(status: :cancelled)
-    DashboardEventService.pipeline_completed(pipeline) if pipeline
+    if pipeline
+      DashboardEventService.pipeline_completed(pipeline)
+      NotificationService.notify(project: pipeline.project, title: "Pipeline cancelled",
+                                 description: "#{pipeline.name} was cancelled on Jenkins build ##{@build.jenkins_build_number}.",
+                                 category: :pipeline, pipeline: pipeline, test_run: @build.test_run)
+    end
   end
 
   def cancel_in_flight_run
