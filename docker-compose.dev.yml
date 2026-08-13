@@ -1,0 +1,73 @@
+# ExecuteHub local development stack — Docker Compose.
+#
+# Provides everything the platform needs for local development and for running
+# a local Jenkins instance (the Week 8 CI/CD integration):
+#
+#   - postgres : PostgreSQL 16, the app's database (port 5434 on the host,
+#                matching the existing standalone `executehub-postgres`)
+#   - redis    : Redis 7, Sidekiq queues + Action Cable pubsub (port 6379)
+#   - jenkins  : Jenkins LTS, the CI server (UI on 8080, agents on 50000)
+#
+# Note: if you still have the old standalone containers running
+# (`docker run`-style `executehub-redis` / `browsercloud-postgres`), stop them
+# first so the names do not clash:
+#
+#     docker stop executehub-redis browsercloud-postgres
+#
+# Then start the whole stack:
+#
+#     docker compose -f docker-compose.dev.yml up -d
+#
+# See JENKINS_SETUP.md for the full Jenkins walkthrough.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: executehub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: executehub_development
+      POSTGRES_USER: executehub
+      POSTGRES_PASSWORD: executehub
+    ports:
+      - "5434:5432"
+    volumes:
+      - executehub-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U executehub -d executehub_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: executehub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - executehub-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: executehub-jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - executehub-jenkins-data:/var/jenkins_home
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS http://localhost:8080/login || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  executehub-postgres-data:
+  executehub-redis-data:
+  executehub-jenkins-data:

@@ -77,5 +77,41 @@ RSpec.describe "Pipelines API", type: :request do
       expect(body["pipeline"]["status"]).to eq("running")
       expect(body["test_run_progress"]["progress_percentage"]).to eq(50.0)
     end
+
+    it "accepts a project CI token so Jenkins can poll the gate" do
+      _, ci_token = CiApiTokenService.create!(project: project, name: "Jenkins")
+
+      get "/api/v1/pipelines/#{pipeline.id}/status",
+          headers: { "Authorization" => "Bearer #{ci_token}" }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["pipeline"]["id"]).to eq(pipeline.id)
+    end
+
+    it "supports the X-ExecuteHub-Token header" do
+      _, ci_token = CiApiTokenService.create!(project: project, name: "Jenkins")
+
+      get "/api/v1/pipelines/#{pipeline.id}/status",
+          headers: { "X-ExecuteHub-Token" => ci_token }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "404s (not 200) when a CI token polls another project's pipeline" do
+      _, ci_token = CiApiTokenService.create!(project: project, name: "Jenkins")
+      other = create(:pipeline)
+
+      get "/api/v1/pipelines/#{other.id}/status",
+          headers: { "Authorization" => "Bearer #{ci_token}" }
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "rejects an invalid CI token" do
+      get "/api/v1/pipelines/#{pipeline.id}/status",
+          headers: { "Authorization" => "Bearer nope" }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 end

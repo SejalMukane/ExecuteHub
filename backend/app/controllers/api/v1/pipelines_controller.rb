@@ -7,6 +7,11 @@ module Api
     class PipelinesController < ApplicationController
       include Authenticatable
 
+      # `status` is a light polling endpoint also used by the Jenkinsfile to
+      # wait on the deployment gate. It accepts either a project CI token
+      # (Bearer or X-ExecuteHub-Token) or a normal user JWT.
+      skip_before_action :authenticate_user, only: [:status]
+      before_action :authenticate_status_request, only: [:status]
       before_action :set_pipeline, only: [:show, :status]
 
       # GET /api/v1/pipelines?project_id=&status=
@@ -42,8 +47,26 @@ module Api
       private
 
       def set_pipeline
-        @pipeline = visible_pipelines.find_by(id: params[:id])
+        @pipeline = pipeline_scope.find_by(id: params[:id])
         render json: { error: "Pipeline not found" }, status: :not_found unless @pipeline
+      end
+
+      # Jenkins polls the gate through the `status` endpoint with its project
+      # CI token; when present, scope visibility to that project. Otherwise
+      # fall back to normal user authentication + project visibility.
+      def authenticate_status_request
+        token = request.headers["Authorization"]&.split(" ")&.last
+        token ||= request.headers["X-ExecuteHub-Token"]
+        if token.present? && (ci_token = CiApiTokenService.authenticate(token))
+          @status_pipeline_scope = ci_token.project.pipelines
+          return
+        end
+
+        authenticate_user
+      end
+
+      def pipeline_scope
+        @status_pipeline_scope || Pipeline.where(project: visible_projects)
       end
 
       def visible_pipelines
